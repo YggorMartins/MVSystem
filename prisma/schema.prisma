@@ -22,6 +22,7 @@ model Product {
   price         Float
   stockQuantity Int
   createdAt     DateTime @default(now())
+  saleItems SaleItem[]
 }
 
 model Sale {
@@ -51,6 +52,7 @@ model CashRegister {
   initialAmount Float
   status      String   @default("open")
   movements   CashMovement[]
+  sales Sale[]
 }
 
 model CashMovement {
