@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  passwordHash  String
+  role          String   @default("user")
+  createdAt     DateTime @default(now())
+}
+
+model Product {
+  id            Int      @id @default(autoincrement())
+  name          String
+  barcode       String   @unique
+  price         Float
+  stockQuantity Int
+  createdAt     DateTime @default(now())
+}
+
+model Sale {
+  id            Int      @id @default(autoincrement())
+  totalAmount   Float
+  paymentMethod String
+  cashRegister  CashRegister @relation(fields: [cashRegisterId], references: [id])
+  cashRegisterId Int
+  createdAt     DateTime @default(now())
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id        Int   @id @default(autoincrement())
+  sale      Sale  @relation(fields: [saleId], references: [id])
+  saleId    Int
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  quantity  Int
+  unitPrice Float
+}
+
+model CashRegister {
+  id          Int      @id @default(autoincrement())
+  openedAt    DateTime
+  closedAt    DateTime?
+  initialAmount Float
+  status      String   @default("open")
+  movements   CashMovement[]
+}
+
+model CashMovement {
+  id          Int      @id @default(autoincrement())
+  cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
+  cashRegisterId Int
+  type        String   // "in" or "out"
+  amount      Float
+  description String?
+  createdAt   DateTime @default(now())
+}
