@@ -27,7 +27,7 @@ router.post('/sales', auth, validate(saleSchema.create), saleController.create);
 
 // Cash (protected)
 router.post('/cash/open', auth, validate(cashSchema.open), cashController.open);
-router.post('/cash/close', auth, validate(cashSchema.close), cashController.close);
+router.post("/cash/close/:id", auth, validate(cashSchema.close), cashController.close);
 router.post('/cash/movement', auth, validate(cashSchema.movement), cashController.movement);
 
 // Report (protected)

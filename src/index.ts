@@ -1,19 +1,16 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import routes from './routes';
-
-dotenv.config();
+import express from "express";
+import routes from "./routes";
+import { env } from "./lib/env";
 
 const app = express();
-const port = process.env.PORT || 4000;
 
 app.use(express.json());
-app.use('/api', routes);
+app.use("/api", routes);
 
-app.get('/', (req, res) => {
-  res.send('MVSystem API');
+app.get("/", (_req, res) => {
+  res.send("MVSystem API");
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(env.port, () => {
+  console.log(`Server running on port ${env.port}`);
 });

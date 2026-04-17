@@ -1,15 +1,20 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "../lib/prisma";
 
-const prisma = new PrismaClient();
+type SaleItemInput = {
+  productId: number;
+  quantity: number;
+  unitPrice: number;
+};
 
-export const create = async (data: {
+type CreateSaleInput = {
   totalAmount: number;
   paymentMethod: string;
   cashRegisterId: number;
-  items: { productId: number; quantity: number; unitPrice: number }[];
-}) => {
-  const sale = await prisma.$transaction(async (tx) => {
-    // create sale
+  items: SaleItemInput[];
+};
+
+export async function create(data: CreateSaleInput) {
+  return prisma.$transaction(async (tx) => {
     const newSale = await tx.sale.create({
       data: {
         totalAmount: data.totalAmount,
@@ -17,7 +22,7 @@ export const create = async (data: {
         cashRegisterId: data.cashRegisterId,
       },
     });
-    // create sale items and update stock
+
     for (const item of data.items) {
       await tx.saleItem.create({
         data: {
@@ -27,16 +32,20 @@ export const create = async (data: {
           unitPrice: item.unitPrice,
         },
       });
-      // decrement stock
+
       await tx.product.update({
         where: { id: item.productId },
-        data: { stockQuantity: { decrement: item.quantity } },
+        data: {
+          stockQuantity: {
+            decrement: item.quantity,
+          },
+        },
       });
     }
+
     return tx.sale.findUnique({
       where: { id: newSale.id },
       include: { items: true },
     });
   });
-  return sale;
-};
+}

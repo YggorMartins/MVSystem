@@ -1,36 +1,38 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "../lib/prisma";
 
-const prisma = new PrismaClient();
+type OpenCashInput = {
+  initialAmount: number;
+};
 
-export const open = async (data: { initialAmount: number }) => {
-  const register = await prisma.cashRegister.create({
+type MovementInput = {
+  cashRegisterId: number;
+  type: "in" | "out";
+  amount: number;
+  description?: string;
+};
+
+export function open(data: OpenCashInput) {
+  return prisma.cashRegister.create({
     data: {
       openedAt: new Date(),
       initialAmount: data.initialAmount,
-      status: 'open',
+      status: "open",
     },
   });
-  return register;
-};
+}
 
-export const close = async (id: number, data: {}) => {
-  const register = await prisma.cashRegister.update({
+export function close(id: number) {
+  return prisma.cashRegister.update({
     where: { id },
     data: {
       closedAt: new Date(),
-      status: 'closed',
+      status: "closed",
     },
   });
-  return register;
-};
+}
 
-export const movement = async (data: {
-  cashRegisterId: number;
-  type: 'in' | 'out';
-  amount: number;
-  description?: string;
-}) => {
-  const movement = await prisma.cashMovement.create({
+export function movement(data: MovementInput) {
+  return prisma.cashMovement.create({
     data: {
       cashRegisterId: data.cashRegisterId,
       type: data.type,
@@ -38,5 +40,4 @@ export const movement = async (data: {
       description: data.description,
     },
   });
-  return movement;
-};
+}

@@ -14,13 +14,13 @@ export const close = async (req: Request, res: Response) => {
   try {
     const { id } = req.params; // Assumindo que o ID do caixa é passado como parâmetro na URL
 
-    const parsedId = Number(id);
+    const parsedId = Number(req.params.id); // Converte o ID para número
 
     if (isNaN(parsedId)) { // Validação básica para garantir que o ID é um número
       return res.status(400).json({ error: 'Invalid id' });
     }
 
-    const register = await cashService.close(parsedId, req.body); // Chama o serviço para fechar o caixa com o ID e os dados fornecidos
+    const register = await cashService.close(parsedId); // Chama o serviço para fechar o caixa com o ID e os dados fornecidos
 
     return res.json(register);
   } catch (error: any) {

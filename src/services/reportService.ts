@@ -1,22 +1,32 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from "../lib/prisma";
+import { getDayRange } from "../lib/date";
 
-const prisma = new PrismaClient();
-
-export const daily = async () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+export async function daily() {
+  const { start, end } = getDayRange();
 
   const sales = await prisma.sale.findMany({
     where: {
-      createdAt: { gte: today, lt: tomorrow },
+      createdAt: {
+        gte: start,
+        lt: end,
+      },
     },
-    include: { items: true },
+    include: {
+      items: true,
+    },
   });
 
-  const totalSales = sales.reduce((sum, s) => sum + s.totalAmount, 0);
-  const totalItems = sales.reduce((sum, s) => sum + s.items.reduce((iSum, i) => iSum + i.quantity, 0), 0);
+  const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalItems = sales.reduce(
+    (sum, sale) =>
+      sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+    0
+  );
 
-  return { date: today.toISOString().split('T')[0], totalSales, totalItems, salesCount: sales.length };
-};
+  return {
+    date: start.toISOString().split("T")[0],
+    totalSales,
+    totalItems,
+    salesCount: sales.length,
+  };
+}
