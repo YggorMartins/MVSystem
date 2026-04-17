@@ -12,8 +12,7 @@ export const open = async (req: Request, res: Response) => {
 
 export const close = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // Assumindo que o ID do caixa é passado como parâmetro na URL
-
+    
     const parsedId = Number(req.params.id); // Converte o ID para número
 
     if (isNaN(parsedId)) { // Validação básica para garantir que o ID é um número
