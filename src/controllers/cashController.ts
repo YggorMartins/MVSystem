@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import * as cashService from '../services/cashService';
+import { Request, Response } from "express";
+import * as cashService from "../services/cashService";
 
 export const open = async (req: Request, res: Response) => {
   try {
@@ -12,11 +12,11 @@ export const open = async (req: Request, res: Response) => {
 
 export const close = async (req: Request, res: Response) => {
   try {
-    
     const parsedId = Number(req.params.id); // Converte o ID para número
 
-    if (isNaN(parsedId)) { // Validação básica para garantir que o ID é um número
-      return res.status(400).json({ error: 'Invalid id' });
+    if (isNaN(parsedId)) {
+      // Validação básica para garantir que o ID é um número
+      return res.status(400).json({ error: "Invalid id" });
     }
 
     const register = await cashService.close(parsedId); // Chama o serviço para fechar o caixa com o ID e os dados fornecidos

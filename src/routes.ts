@@ -1,36 +1,51 @@
-import { Router } from 'express';
-import * as authController from './controllers/authController';
-import * as productController from './controllers/productController';
-import * as saleController from './controllers/saleController';
-import * as cashController from './controllers/cashController';
-import * as reportController from './controllers/reportController';
-import { validate } from './middleware/validationMiddleware';
-import { auth } from './middleware/authMiddleware';
-import * as authSchema from './schemas/authSchema';
-import * as productSchema from './schemas/productSchema';
-import * as saleSchema from './schemas/saleSchema';
-import * as cashSchema from './schemas/cashSchema';
+import { Router } from "express";
+import * as ctrl from "./controllers/appControllers";
+import { validate } from "./middleware/validationMiddleware";
+import { auth, allowRoles } from "./middleware/authMiddleware";
+import * as schemas from "./schemas/appSchemas";
+import { z } from "zod";
 
 const router = Router();
 
-// Auth
-router.post('/auth/register', validate(authSchema.register), authController.register);
-router.post('/auth/login', validate(authSchema.login), authController.login);
+// Auth (Público)
+router.post("/auth/register", validate(schemas.registerSchema), ctrl.register);
+router.post("/auth/login", validate(schemas.loginSchema), ctrl.login);
 
-// Products (protected)
-router.post('/products', auth, validate(productSchema.create), productController.create);
-router.get('/products', auth, productController.list);
-router.get('/products/:barcode', auth, productController.findByBarcode);
+// Categorias (Apenas Admin e Gerente)
+router.post(
+  "/categories",
+  auth,
+  allowRoles("admin", "gerente"),
+  validate(schemas.categorySchema),
+  ctrl.createCategory,
+);
 
-// Sales (protected)
-router.post('/sales', auth, validate(saleSchema.create), saleController.create);
+// Produtos (Gestão por Admin, Gerente e Estoque)
+router.post(
+  "/products",
+  auth,
+  allowRoles("admin", "gerente", "estoque"),
+  validate(schemas.productSchema),
+  ctrl.createProduct,
+);
+router.get("/products", auth, ctrl.listProducts);
 
-// Cash (protected)
-router.post('/cash/open', auth, validate(cashSchema.open), cashController.open);
-router.post("/cash/close/:id", auth, validate(cashSchema.close), cashController.close);
-router.post('/cash/movement', auth, validate(cashSchema.movement), cashController.movement);
+// Ajuste manual de estoque (Apenas admin e estoque)
+router.patch(
+  "/products/:id/stock",
+  auth,
+  allowRoles("admin", "estoque"),
+  validate(z.object({ quantity: z.number().int().nonnegative() })),
+  ctrl.updateStock,
+);
 
-// Report (protected)
-router.get('/report/daily', auth, reportController.daily);
+// Vendas (Caixa, Gerente e Admin podem registrar)
+router.post(
+  "/sales",
+  auth,
+  allowRoles("admin", "gerente", "caixa"),
+  validate(schemas.saleSchema),
+  ctrl.createSale,
+);
 
 export default router;

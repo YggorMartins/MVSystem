@@ -8,59 +8,78 @@ datasource db {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  passwordHash  String
-  role          String   @default("user")
-  createdAt     DateTime @default(now())
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String
+  role         String     @default("caixa") // admin, gerente, caixa, estoque
+  createdAt    DateTime   @default(now())
+  auditLogs    AuditLog[]
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
 }
 
 model Product {
-  id            Int      @id @default(autoincrement())
+  id            Int        @id @default(autoincrement())
   name          String
-  barcode       String   @unique
+  barcode       String     @unique
   price         Float
   stockQuantity Int
-  createdAt     DateTime @default(now())
-  saleItems SaleItem[]
+  categoryId    Int
+  category      Category   @relation(fields: [categoryId], references: [id])
+  createdAt     DateTime   @default(now())
+  saleItems     SaleItem[]
 }
 
 model Sale {
-  id            Int      @id @default(autoincrement())
-  totalAmount   Float
-  paymentMethod String
-  cashRegister  CashRegister @relation(fields: [cashRegisterId], references: [id])
+  id             Int          @id @default(autoincrement())
+  totalAmount    Float
+  paymentMethod  String
   cashRegisterId Int
-  createdAt     DateTime @default(now())
-  items         SaleItem[]
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  createdAt      DateTime     @default(now())
+  items          SaleItem[]
 }
 
 model SaleItem {
-  id        Int   @id @default(autoincrement())
-  sale      Sale  @relation(fields: [saleId], references: [id])
+  id        Int     @id @default(autoincrement())
   saleId    Int
-  product   Product @relation(fields: [productId], references: [id])
+  sale      Sale    @relation(fields: [saleId], references: [id])
   productId Int
+  product   Product @relation(fields: [productId], references: [id])
   quantity  Int
   unitPrice Float
 }
 
 model CashRegister {
-  id          Int      @id @default(autoincrement())
-  openedAt    DateTime
-  closedAt    DateTime?
+  id            Int            @id @default(autoincrement())
+  openedAt      DateTime
+  closedAt      DateTime?
   initialAmount Float
-  status      String   @default("open")
-  movements   CashMovement[]
-  sales Sale[]
+  status        String         @default("open")
+  movements     CashMovement[]
+  sales         Sale[]
 }
 
 model CashMovement {
-  id          Int      @id @default(autoincrement())
-  cashRegister CashRegister @relation(fields: [cashRegisterId], references: [id])
+  id             Int          @id @default(autoincrement())
   cashRegisterId Int
-  type        String   // "in" or "out"
-  amount      Float
-  description String?
-  createdAt   DateTime @default(now())
+  cashRegister   CashRegister @relation(fields: [cashRegisterId], references: [id])
+  type           String       // "in" or "out"
+  amount         Float
+  description    String?
+  createdAt      DateTime     @default(now())
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   String
+  createdAt DateTime @default(now())
 }
