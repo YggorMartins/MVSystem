@@ -8,23 +8,25 @@ MVSystem é uma aplicação backend para gestão de pequenos negócios, com foco
 
 ### Etapa atual
 
-Atualmente, o projeto está na fase de implementação da API principal do sistema, com os módulos básicos de:
+Atualmente, o projeto está na fase de implementação da API principal do sistema e já conta com:
 
 - autenticação e autorização por perfil de usuário;
 - cadastro e listagem de categorias;
 - cadastro e consulta de produtos;
 - ajuste manual de estoque;
 - registro de vendas;
-- estrutura inicial de persistência com Prisma e banco PostgreSQL.
+- relatórios diários básicos;
+- suporte local a PostgreSQL via Docker Compose;
+- testes automatizados com Jest e integração básica de autenticação.
 
 ### Próximos passos
 
 As próximas etapas incluem:
 
 - finalização do fluxo completo de caixa;
-- implementação de relatórios e dashboards;
+- implementação de relatórios e dashboards mais completos;
 - refinamento de validações e regras de negócio;
-- testes automatizados e melhorias de segurança;
+- ampliação da cobertura de testes e consolidação da suíte de integração;
 - revisão da documentação e preparação para uma versão mais madura.
 
 ## Funcionalidades
@@ -37,7 +39,10 @@ As próximas etapas incluem:
 - Cadastro e listagem de produtos
 - Ajuste de estoque
 - Registro de vendas
+- Relatório diário de vendas
 - Persistência com Prisma
+- Suporte local a PostgreSQL via Docker Compose
+- Testes automatizados com Jest
 
 ### Em desenvolvimento
 
@@ -64,7 +69,8 @@ Antes de começar, certifique-se de ter instalado:
 
 - Node.js 20 ou superior
 - npm ou pnpm
-- PostgreSQL
+- Docker (para rodar PostgreSQL via Docker Compose)
+- PostgreSQL (ou usar o container Docker fornecido)
 
 ## Instalação
 
@@ -86,26 +92,39 @@ npm install
 Crie um arquivo `.env` na raiz do projeto com o conteúdo abaixo:
 
 ```env
-DATABASE_URL="postgresql://usuario:senha@localhost:5432/mvsystem"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mvsystem"
 JWT_SECRET="seu-segredo-aqui"
+PORT=4000
 ```
 
-4. Execute as migrações do Prisma:
+4. Inicie o banco de dados PostgreSQL com Docker Compose:
+
+```bash
+docker compose up -d
+```
+
+5. Execute as migrações do Prisma:
 
 ```bash
 npx prisma migrate dev
 ```
 
-5. Opcionalmente, rode o seed inicial:
+6. Opcionalmente, rode o seed inicial:
 
 ```bash
 npm run prisma:seed
 ```
 
-6. Inicie o servidor em modo de desenvolvimento:
+7. Inicie o servidor em modo de desenvolvimento:
 
 ```bash
 npm run dev
+```
+
+8. Execute os testes:
+
+```bash
+npm test
 ```
 
 ## Estrutura do projeto
@@ -134,6 +153,7 @@ A API já conta com rotas para:
 - `GET /products`
 - `PATCH /products/:id/stock`
 - `POST /sales`
+- `GET /reports/daily`
 
 ## Contribuição
 
