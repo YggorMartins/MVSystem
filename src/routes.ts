@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as ctrl from "./controllers/appControllers";
+import * as reportController from "./controllers/reportController";
 import { validate } from "./middleware/validationMiddleware";
 import { auth, allowRoles } from "./middleware/authMiddleware";
 import * as schemas from "./schemas/appSchemas";
@@ -46,6 +47,14 @@ router.post(
   allowRoles("admin", "gerente", "caixa"),
   validate(schemas.saleSchema),
   ctrl.createSale,
+);
+
+// Relatórios diários (Admin, Gerente e Caixa)
+router.get(
+  "/reports/daily",
+  auth,
+  allowRoles("admin", "gerente", "caixa"),
+  reportController.daily,
 );
 
 export default router;

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as authService from "../services/authService";
 import * as productService from "../services/productService";
 import * as saleService from "../services/saleService";
+import * as productController from "./productController";
 
 export const register = async (req: Request, res: Response) => {
   const user = await authService.register(req.body);
@@ -28,6 +29,8 @@ export const createProduct = async (req: Request, res: Response) => {
   );
   res.status(201).json(product);
 };
+
+export const listProducts = productController.list;
 
 export const updateStock = async (req: Request, res: Response) => {
   const { id } = req.params;

@@ -30,7 +30,6 @@ app.use("/api", routes);
 app.use(errorHandler);
 
 if (env.nodeEnv !== "test") {
-  app.use(errorHandler);
   app.listen(env.port, () => {
     logger.info(
       `MVSystem API running securely on port ${env.port} [${env.nodeEnv}]`,

@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/prisma";
 import { signToken } from "../lib/jwt";
+import { AppError } from "../middleware/errorMiddleware";
 
 type RegisterInput = {
   email: string;
@@ -19,7 +20,7 @@ export async function register(data: RegisterInput) {
   });
 
   if (exists) {
-    throw new Error("Email already in use");
+    throw new AppError(400, "Email already in use");
   }
 
   const passwordHash = await bcrypt.hash(data.password, 10);
@@ -39,13 +40,13 @@ export async function login(data: LoginInput) {
   });
 
   if (!user) {
-    throw new Error("Invalid credentials");
+    throw new AppError(401, "Invalid credentials");
   }
 
   const valid = await bcrypt.compare(data.password, user.passwordHash);
 
   if (!valid) {
-    throw new Error("Invalid credentials");
+    throw new AppError(401, "Invalid credentials");
   }
 
   return signToken({
