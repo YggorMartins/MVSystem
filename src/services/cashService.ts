@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/errorMiddleware";
-import { AppError } from "../middleware/errorMiddleware";
+import { AuditRepository } from "../repositories/auditRepository";
+
 type OpenCashInput = {
   initialAmount: number;
 };
@@ -12,7 +13,7 @@ type MovementInput = {
   description?: string;
 };
 
-export async function open(data: OpenCashInput) {
+export async function open(data: OpenCashInput, userId?: number) {
   const openRegister = await prisma.cashRegister.findFirst({
     where: { status: "open" },
   });
@@ -21,16 +22,24 @@ export async function open(data: OpenCashInput) {
     throw new AppError(400, "There is already an open cash register");
   }
 
-  return prisma.cashRegister.create({
+  const register = await prisma.cashRegister.create({
     data: {
       openedAt: new Date(),
       initialAmount: data.initialAmount,
       status: "open",
     },
   });
+
+  await AuditRepository.log(
+    userId,
+    "CASH_OPEN",
+    `Opened cash register ${register.id}`,
+  );
+
+  return register;
 }
 
-export async function close(id: number) {
+export async function close(id: number, userId?: number) {
   const register = await prisma.cashRegister.findUnique({
     where: { id },
   });
@@ -43,16 +52,20 @@ export async function close(id: number) {
     throw new AppError(400, "Cash register is already closed");
   }
 
-  return prisma.cashRegister.update({
+  const updated = await prisma.cashRegister.update({
     where: { id },
     data: {
       closedAt: new Date(),
       status: "closed",
     },
   });
+
+  await AuditRepository.log(userId, "CASH_CLOSE", `Closed cash register ${id}`);
+
+  return updated;
 }
 
-export async function movement(data: MovementInput) {
+export async function movement(data: MovementInput, userId?: number) {
   const register = await prisma.cashRegister.findUnique({
     where: { id: data.cashRegisterId },
   });
@@ -79,12 +92,42 @@ export async function movement(data: MovementInput) {
     throw new AppError(400, "Insufficient funds in cash register");
   }
 
-  return prisma.cashMovement.create({
+  const movement = await prisma.cashMovement.create({
     data: {
       cashRegisterId: data.cashRegisterId,
       type: data.type,
       amount: data.amount,
       description: data.description,
     },
+  });
+
+  await AuditRepository.log(
+    userId,
+    "CASH_MOVEMENT",
+    `Cash register ${data.cashRegisterId} movement ${data.type} ${data.amount}`,
+  );
+
+  return movement;
+}
+
+export async function listRegisters() {
+  return prisma.cashRegister.findMany({
+    include: { movements: true },
+    orderBy: { openedAt: "desc" },
+  });
+}
+
+export async function listMovements(cashRegisterId: number) {
+  const register = await prisma.cashRegister.findUnique({
+    where: { id: cashRegisterId },
+  });
+
+  if (!register) {
+    throw new AppError(404, "Cash register not found");
+  }
+
+  return prisma.cashMovement.findMany({
+    where: { cashRegisterId },
+    orderBy: { createdAt: "asc" },
   });
 }

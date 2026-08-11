@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as authService from "../services/authService";
 import * as productService from "../services/productService";
 import * as saleService from "../services/saleService";
+import { AuditRepository } from "../repositories/auditRepository";
 import * as productController from "./productController";
 
 export const register = async (req: Request, res: Response) => {
@@ -28,6 +29,21 @@ export const createProduct = async (req: Request, res: Response) => {
     req.user?.userId,
   );
   res.status(201).json(product);
+};
+
+export const listCategories = async (_req: Request, res: Response) => {
+  const categories = await productService.listCategories();
+  res.json(categories);
+};
+
+export const listSales = async (_req: Request, res: Response) => {
+  const sales = await saleService.listSales();
+  res.json(sales);
+};
+
+export const listAuditLogs = async (_req: Request, res: Response) => {
+  const logs = await AuditRepository.listAll();
+  res.json(logs);
 };
 
 export const listProducts = productController.list;

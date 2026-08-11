@@ -7,8 +7,11 @@ describe("Cash flow integration tests", () => {
   let token: string;
 
   beforeAll(async () => {
+    await prisma.saleItem.deleteMany();
+    await prisma.sale.deleteMany();
     await prisma.cashMovement.deleteMany();
     await prisma.cashRegister.deleteMany();
+    await prisma.auditLog.deleteMany();
     await prisma.user.deleteMany();
 
     await request(app).post("/api/auth/register").send({
@@ -23,6 +26,13 @@ describe("Cash flow integration tests", () => {
     });
 
     token = loginRes.body.token;
+  });
+
+  beforeEach(async () => {
+    await prisma.saleItem.deleteMany();
+    await prisma.sale.deleteMany();
+    await prisma.cashMovement.deleteMany();
+    await prisma.cashRegister.deleteMany();
   });
 
   afterAll(async () => {
@@ -41,6 +51,13 @@ describe("Cash flow integration tests", () => {
   });
 
   it("should reject cash open when already open", async () => {
+    const firstRes = await request(app)
+      .post("/api/cash/open")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ initialAmount: 100 });
+
+    expect(firstRes.status).toBe(201);
+
     const res = await request(app)
       .post("/api/cash/open")
       .set("Authorization", `Bearer ${token}`)
@@ -89,11 +106,19 @@ describe("Cash flow integration tests", () => {
   });
 
   it("should create cash movements and prevent overdraft", async () => {
+    const openRes = await request(app)
+      .post("/api/cash/open")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ initialAmount: 100 });
+
+    expect(openRes.status).toBe(201);
+    const registerId = openRes.body.id;
+
     const inRes = await request(app)
       .post("/api/cash/movement")
       .set("Authorization", `Bearer ${token}`)
       .send({
-        cashRegisterId: 1,
+        cashRegisterId: registerId,
         type: "in",
         amount: 50,
       });
@@ -105,7 +130,7 @@ describe("Cash flow integration tests", () => {
       .post("/api/cash/movement")
       .set("Authorization", `Bearer ${token}`)
       .send({
-        cashRegisterId: 1,
+        cashRegisterId: registerId,
         type: "out",
         amount: 200,
       });
@@ -115,8 +140,16 @@ describe("Cash flow integration tests", () => {
   });
 
   it("should close the cash register", async () => {
+    const openRes = await request(app)
+      .post("/api/cash/open")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ initialAmount: 100 });
+
+    expect(openRes.status).toBe(201);
+    const registerId = openRes.body.id;
+
     const res = await request(app)
-      .post("/api/cash/close/1")
+      .post(`/api/cash/close/${registerId}`)
       .set("Authorization", `Bearer ${token}`)
       .send();
 
@@ -125,11 +158,24 @@ describe("Cash flow integration tests", () => {
   });
 
   it("should reject movement after cash register is closed", async () => {
+    const openRes = await request(app)
+      .post("/api/cash/open")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ initialAmount: 100 });
+
+    expect(openRes.status).toBe(201);
+    const registerId = openRes.body.id;
+
+    await request(app)
+      .post(`/api/cash/close/${registerId}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send();
+
     const res = await request(app)
       .post("/api/cash/movement")
       .set("Authorization", `Bearer ${token}`)
       .send({
-        cashRegisterId: 1,
+        cashRegisterId: registerId,
         type: "in",
         amount: 20,
       });

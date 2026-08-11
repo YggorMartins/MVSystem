@@ -50,3 +50,17 @@ export async function createSale(data: any, userId?: number) {
     return newSale;
   });
 }
+
+export async function listSales() {
+  return prisma.sale.findMany({
+    include: {
+      items: {
+        include: {
+          product: true,
+        },
+      },
+      cashRegister: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}

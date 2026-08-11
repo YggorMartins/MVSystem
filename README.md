@@ -14,9 +14,10 @@ Atualmente, o projeto está na fase de implementação da API principal do siste
 - cadastro e listagem de categorias;
 - cadastro e consulta de produtos;
 - ajuste manual de estoque;
-- registro de vendas;
+- registro e listagem de vendas;
 - fluxo completo de caixa com abertura, movimentação e fechamento;
-- relatórios diários básicos;
+- relatórios diários e dashboard de gestão;
+- auditoria de ações do sistema;
 - suporte local a PostgreSQL via Docker Compose;
 - testes automatizados com Jest e integração de segurança.
 
@@ -151,14 +152,21 @@ A API já conta com rotas para:
 - `POST /auth/register`
 - `POST /auth/login`
 - `POST /categories`
+- `GET /categories`
 - `POST /products`
 - `GET /products`
+- `GET /products/barcode/:barcode`
 - `PATCH /products/:id/stock`
 - `POST /sales`
+- `GET /sales`
 - `POST /cash/open`
 - `POST /cash/close/:id`
 - `POST /cash/movement`
+- `GET /cash/registers`
+- `GET /cash/registers/:id/movements`
 - `GET /reports/daily`
+- `GET /reports/dashboard`
+- `GET /audit/logs`
 
 ## Contribuição
 

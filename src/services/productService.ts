@@ -29,6 +29,14 @@ export async function createProduct(data: any, userId?: number) {
   return product;
 }
 
+export async function findByBarcode(barcode: string) {
+  return ProductRepository.findByBarcode(barcode);
+}
+
+export async function listCategories() {
+  return CategoryRepository.listAll();
+}
+
 export async function listProducts() {
   return ProductRepository.listAll();
 }

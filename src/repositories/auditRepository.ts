@@ -3,4 +3,18 @@ export const AuditRepository = {
   async log(userId: number | undefined, action: string, details: string) {
     return prisma.auditLog.create({ data: { userId, action, details } });
   },
+  async listAll() {
+    return prisma.auditLog.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
 };
