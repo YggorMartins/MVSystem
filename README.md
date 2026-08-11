@@ -15,9 +15,10 @@ Atualmente, o projeto está na fase de implementação da API principal do siste
 - cadastro e consulta de produtos;
 - ajuste manual de estoque;
 - registro de vendas;
+- fluxo completo de caixa com abertura, movimentação e fechamento;
 - relatórios diários básicos;
 - suporte local a PostgreSQL via Docker Compose;
-- testes automatizados com Jest e integração básica de autenticação.
+- testes automatizados com Jest e integração de segurança.
 
 ### Próximos passos
 
@@ -39,6 +40,7 @@ As próximas etapas incluem:
 - Cadastro e listagem de produtos
 - Ajuste de estoque
 - Registro de vendas
+- Fluxo completo de caixa: abertura, movimentação e fechamento
 - Relatório diário de vendas
 - Persistência com Prisma
 - Suporte local a PostgreSQL via Docker Compose
@@ -153,6 +155,9 @@ A API já conta com rotas para:
 - `GET /products`
 - `PATCH /products/:id/stock`
 - `POST /sales`
+- `POST /cash/open`
+- `POST /cash/close/:id`
+- `POST /cash/movement`
 - `GET /reports/daily`
 
 ## Contribuição

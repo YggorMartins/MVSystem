@@ -1,9 +1,11 @@
 import { Router } from "express";
 import * as ctrl from "./controllers/appControllers";
 import * as reportController from "./controllers/reportController";
+import * as cashController from "./controllers/cashController";
 import { validate } from "./middleware/validationMiddleware";
 import { auth, allowRoles } from "./middleware/authMiddleware";
 import * as schemas from "./schemas/appSchemas";
+import * as cashSchemas from "./schemas/cashSchema";
 import { z } from "zod";
 
 const router = Router();
@@ -47,6 +49,30 @@ router.post(
   allowRoles("admin", "gerente", "caixa"),
   validate(schemas.saleSchema),
   ctrl.createSale,
+);
+
+// Fluxo de caixa (Admin e Caixa)
+router.post(
+  "/cash/open",
+  auth,
+  allowRoles("admin", "caixa"),
+  validate(cashSchemas.open),
+  cashController.open,
+);
+
+router.post(
+  "/cash/close/:id",
+  auth,
+  allowRoles("admin", "caixa"),
+  cashController.close,
+);
+
+router.post(
+  "/cash/movement",
+  auth,
+  allowRoles("admin", "caixa"),
+  validate(cashSchemas.movement),
+  cashController.movement,
 );
 
 // Relatórios diários (Admin, Gerente e Caixa)
