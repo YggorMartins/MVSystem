@@ -47,5 +47,6 @@ export async function login(data: LoginInput) {
 
   return signToken({
     userId: user.id,
+    role: user.role,
   });
 }

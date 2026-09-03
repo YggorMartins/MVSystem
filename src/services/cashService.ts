@@ -30,67 +30,76 @@ export async function open(data: OpenCashInput, userId?: number) {
 }
 
 export async function close(id: number, data: CloseCashInput, userId?: number) {
-  return prisma.$transaction(async (tx) => {
-    const [register] = await tx.$queryRaw<Array<{ status: string }>>`
+  return prisma.$transaction(
+    async (tx) => {
+      const [register] = await tx.$queryRaw<Array<{ status: string }>>`
       SELECT "status"::text AS "status" FROM "CashRegister" WHERE "id" = ${id} FOR UPDATE
     `;
-    if (!register) throw new AppError(404, "Caixa não encontrado");
-    if (register.status !== "open") throw new AppError(409, "O caixa já está fechado");
+      if (!register) throw new AppError(404, "Caixa não encontrado");
+      if (register.status !== "open") throw new AppError(409, "O caixa já está fechado");
 
-    const updated = await tx.cashRegister.update({
-      where: { id },
-      data: { closedAt: new Date(), closingAmount: data.closingAmount, status: "closed" },
-    });
-    await AuditRepository.log(
-      userId,
-      "CASH_CLOSE",
-      `Caixa ${id} fechado com valor contado ${updated.closingAmount?.toFixed(2)}`,
-      tx,
-    );
-    return updated;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      const updated = await tx.cashRegister.update({
+        where: { id },
+        data: { closedAt: new Date(), closingAmount: data.closingAmount, status: "closed" },
+      });
+      await AuditRepository.log(
+        userId,
+        "CASH_CLOSE",
+        `Caixa ${id} fechado com valor contado ${updated.closingAmount?.toFixed(2)}`,
+        tx,
+      );
+      return updated;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
 
 export async function movement(data: MovementInput, userId?: number) {
-  return prisma.$transaction(async (tx) => {
-    const [register] = await tx.$queryRaw<Array<{ status: string; initialAmount: Prisma.Decimal }>>`
+  return prisma.$transaction(
+    async (tx) => {
+      const [register] = await tx.$queryRaw<
+        Array<{ status: string; initialAmount: Prisma.Decimal }>
+      >`
       SELECT "status"::text AS "status", "initialAmount"
       FROM "CashRegister" WHERE "id" = ${data.cashRegisterId} FOR UPDATE
     `;
-    if (!register) throw new AppError(404, "Caixa não encontrado");
-    if (register.status !== "open") {
-      throw new AppError(409, "Não é possível movimentar um caixa fechado");
-    }
+      if (!register) throw new AppError(404, "Caixa não encontrado");
+      if (register.status !== "open") {
+        throw new AppError(409, "Não é possível movimentar um caixa fechado");
+      }
 
-    const movements = await tx.cashMovement.findMany({
-      where: { cashRegisterId: data.cashRegisterId },
-      select: { type: true, amount: true },
-    });
-    const balance = movements.reduce(
-      (total, item) => item.type === "cash_in" ? total.add(item.amount) : total.sub(item.amount),
-      register.initialAmount,
-    );
-    const amount = new Prisma.Decimal(data.amount);
-    if (data.type === "out" && amount.greaterThan(balance)) {
-      throw new AppError(409, "Saldo insuficiente no caixa");
-    }
+      const movements = await tx.cashMovement.findMany({
+        where: { cashRegisterId: data.cashRegisterId },
+        select: { type: true, amount: true },
+      });
+      const balance = movements.reduce(
+        (total, item) =>
+          item.type === "cash_in" ? total.add(item.amount) : total.sub(item.amount),
+        register.initialAmount,
+      );
+      const amount = new Prisma.Decimal(data.amount);
+      if (data.type === "out" && amount.greaterThan(balance)) {
+        throw new AppError(409, "Saldo insuficiente no caixa");
+      }
 
-    const movement = await tx.cashMovement.create({
-      data: {
-        cashRegisterId: data.cashRegisterId,
-        type: data.type === "in" ? "cash_in" : "cash_out",
-        amount,
-        description: data.description,
-      },
-    });
-    await AuditRepository.log(
-      userId,
-      "CASH_MOVEMENT",
-      `Movimento ${data.type} de ${amount.toFixed(2)} no caixa ${data.cashRegisterId}`,
-      tx,
-    );
-    return movement;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      const movement = await tx.cashMovement.create({
+        data: {
+          cashRegisterId: data.cashRegisterId,
+          type: data.type === "in" ? "cash_in" : "cash_out",
+          amount,
+          description: data.description,
+        },
+      });
+      await AuditRepository.log(
+        userId,
+        "CASH_MOVEMENT",
+        `Movimento ${data.type} de ${amount.toFixed(2)} no caixa ${data.cashRegisterId}`,
+        tx,
+      );
+      return movement;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
 
 export function listRegisters() {

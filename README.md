@@ -137,26 +137,26 @@ Cadastro público:
 
 ## Rotas
 
-| Método | Rota | Perfis | Descrição |
-| --- | --- | --- | --- |
-| `POST` | `/api/auth/register` | Público | Cadastra usuário como `caixa` |
-| `POST` | `/api/auth/login` | Público | Retorna um JWT |
-| `POST` | `/api/categories` | Admin, gerente | Cadastra categoria |
-| `GET` | `/api/categories` | Admin, gerente | Lista categorias |
-| `POST` | `/api/products` | Admin, gerente, estoque | Cadastra produto |
-| `GET` | `/api/products` | Todos autenticados | Lista produtos |
-| `GET` | `/api/products/barcode/:barcode` | Todos autenticados | Busca por código de barras |
-| `PATCH` | `/api/products/:id/stock` | Admin, estoque | Ajusta estoque |
-| `POST` | `/api/sales` | Admin, gerente, caixa | Registra venda |
-| `GET` | `/api/sales` | Admin, gerente, caixa | Lista vendas |
-| `POST` | `/api/cash/open` | Admin, caixa | Abre caixa |
-| `POST` | `/api/cash/close/:id` | Admin, caixa | Fecha caixa |
-| `POST` | `/api/cash/movement` | Admin, caixa | Registra entrada ou saída |
-| `GET` | `/api/cash/registers` | Admin, caixa | Lista caixas |
-| `GET` | `/api/cash/registers/:id/movements` | Admin, caixa | Lista movimentos |
-| `GET` | `/api/reports/daily` | Admin, gerente, caixa | Relatório diário |
-| `GET` | `/api/reports/dashboard` | Admin, gerente, caixa | Dashboard gerencial |
-| `GET` | `/api/audit/logs` | Admin, gerente | Lista auditoria |
+| Método  | Rota                                | Perfis                  | Descrição                     |
+| ------- | ----------------------------------- | ----------------------- | ----------------------------- |
+| `POST`  | `/api/auth/register`                | Público                 | Cadastra usuário como `caixa` |
+| `POST`  | `/api/auth/login`                   | Público                 | Retorna um JWT                |
+| `POST`  | `/api/categories`                   | Admin, gerente          | Cadastra categoria            |
+| `GET`   | `/api/categories`                   | Admin, gerente          | Lista categorias              |
+| `POST`  | `/api/products`                     | Admin, gerente, estoque | Cadastra produto              |
+| `GET`   | `/api/products`                     | Todos autenticados      | Lista produtos                |
+| `GET`   | `/api/products/barcode/:barcode`    | Todos autenticados      | Busca por código de barras    |
+| `PATCH` | `/api/products/:id/stock`           | Admin, estoque          | Ajusta estoque                |
+| `POST`  | `/api/sales`                        | Admin, gerente, caixa   | Registra venda                |
+| `GET`   | `/api/sales`                        | Admin, gerente, caixa   | Lista vendas                  |
+| `POST`  | `/api/cash/open`                    | Admin, caixa            | Abre caixa                    |
+| `POST`  | `/api/cash/close/:id`               | Admin, caixa            | Fecha caixa                   |
+| `POST`  | `/api/cash/movement`                | Admin, caixa            | Registra entrada ou saída     |
+| `GET`   | `/api/cash/registers`               | Admin, caixa            | Lista caixas                  |
+| `GET`   | `/api/cash/registers/:id/movements` | Admin, caixa            | Lista movimentos              |
+| `GET`   | `/api/reports/daily`                | Admin, gerente, caixa   | Relatório diário              |
+| `GET`   | `/api/reports/dashboard`            | Admin, gerente, caixa   | Dashboard gerencial           |
+| `GET`   | `/api/audit/logs`                   | Admin, gerente          | Lista auditoria               |
 
 ## Exemplos
 
@@ -166,8 +166,8 @@ Cadastro público:
 {
   "name": "Queijo por quilo",
   "barcode": "789000000001",
-  "price": 42.90,
-  "stockQuantity": 15.750,
+  "price": 42.9,
+  "stockQuantity": 15.75,
   "categoryId": 1
 }
 ```
@@ -182,7 +182,7 @@ Cadastro público:
   "items": [
     {
       "productId": 1,
-      "quantity": 0.350
+      "quantity": 0.35
     }
   ]
 }
@@ -204,7 +204,7 @@ Abertura:
 
 ```json
 {
-  "initialAmount": 150.00
+  "initialAmount": 150.0
 }
 ```
 
@@ -214,7 +214,7 @@ Movimento:
 {
   "cashRegisterId": 1,
   "type": "out",
-  "amount": 25.50,
+  "amount": 25.5,
   "description": "Pagamento de fornecedor"
 }
 ```

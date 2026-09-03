@@ -3,6 +3,7 @@ import { env } from "./env";
 
 export type JwtPayload = {
   userId: number;
+  role: "admin" | "gerente" | "caixa" | "estoque";
 };
 
 export function signToken(payload: JwtPayload) {

@@ -1,7 +1,6 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
 import routes from "./routes";
 import { env } from "./lib/env";
 import { errorHandler } from "./middleware/errorMiddleware";
@@ -21,16 +20,6 @@ app.use(
   }),
 );
 
-// Rate Limiting para evitar força bruta e DoS
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  limit: 100,
-  standardHeaders: "draft-8",
-  legacyHeaders: false,
-  message: { error: "Muitas requisições. Tente novamente mais tarde" },
-});
-app.use("/api", limiter);
-
 app.use(express.json({ limit: "32kb", strict: true }));
 app.use("/api", routes);
 
@@ -40,9 +29,7 @@ app.use(errorHandler);
 
 if (env.nodeEnv !== "test") {
   const server = app.listen(env.port, () => {
-    logger.info(
-      `MVSystem API running securely on port ${env.port} [${env.nodeEnv}]`,
-    );
+    logger.info(`MVSystem API running securely on port ${env.port} [${env.nodeEnv}]`);
   });
 
   server.requestTimeout = 30_000;

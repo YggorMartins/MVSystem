@@ -17,7 +17,7 @@ export const findByBarcode = async (req: Request, res: Response) => {
   }
   const product = await productService.findByBarcode(barcode);
 
-    if (!product) {
+  if (!product) {
     return res.status(404).json({ error: "Produto não encontrado" });
   }
   return res.json(product);

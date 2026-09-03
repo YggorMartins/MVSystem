@@ -16,18 +16,12 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const createCategory = async (req: Request, res: Response) => {
-  const category = await productService.createCategory(
-    req.body.name,
-    req.user?.userId,
-  );
+  const category = await productService.createCategory(req.body.name, req.user?.userId);
   res.status(201).json(category);
 };
 
 export const createProduct = async (req: Request, res: Response) => {
-  const product = await productService.createProduct(
-    req.body,
-    req.user?.userId,
-  );
+  const product = await productService.createProduct(req.body, req.user?.userId);
   res.status(201).json(product);
 };
 
@@ -55,15 +49,29 @@ export const updateStock = async (req: Request, res: Response) => {
   if (!Number.isInteger(parsedId) || parsedId <= 0) {
     return res.status(400).json({ error: "Identificador do produto inválido" });
   }
-  const product = await productService.updateStockManual(
-    parsedId,
-    quantity,
-    req.user?.userId,
-  );
+  const product = await productService.updateStockManual(parsedId, quantity, req.user?.userId);
   res.json(product);
+};
+
+export const archiveProduct = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Produto inválido" });
+  return res.json(await productService.archiveProduct(id, req.user?.userId));
+};
+
+export const updateProduct = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Produto inválido" });
+  return res.json(await productService.updateProduct(id, req.body, req.user?.userId));
 };
 
 export const createSale = async (req: Request, res: Response) => {
   const sale = await saleService.createSale(req.body, req.user?.userId);
   res.status(201).json(sale);
+};
+
+export const cancelSale = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Venda inválida" });
+  return res.json(await saleService.cancelSale(id, req.user?.userId));
 };

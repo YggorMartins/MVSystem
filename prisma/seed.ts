@@ -4,10 +4,12 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 const prisma = new PrismaClient();
-const input = z.object({
-  email: z.string().trim().toLowerCase().pipe(z.email()),
-  password: z.string().min(12).max(72),
-}).safeParse({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD });
+const input = z
+  .object({
+    email: z.string().trim().toLowerCase().pipe(z.email()),
+    password: z.string().min(12).max(72),
+  })
+  .safeParse({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD });
 
 async function main() {
   if (!input.success) {

@@ -28,10 +28,14 @@ model Product {
   name          String
   barcode       String     @unique
   price         Decimal    @db.Decimal(12, 2)
+  costPrice     Decimal    @default(0) @db.Decimal(12, 2)
   stockQuantity Decimal    @db.Decimal(14, 3)
-  categoryId    Int
-  category      Category   @relation(fields: [categoryId], references: [id])
+  unit          String     @default("UN") @db.VarChar(10)
+  lowStockThreshold Decimal @default(0) @db.Decimal(14, 3)
+  categoryId    Int?
+  category      Category?  @relation(fields: [categoryId], references: [id])
   createdAt     DateTime   @default(now())
+  archivedAt    DateTime?
   saleItems     SaleItem[]
 }
 
@@ -44,6 +48,30 @@ model Sale {
   cashRegister   CashRegister  @relation(fields: [cashRegisterId], references: [id])
   createdAt      DateTime      @default(now())
   items          SaleItem[]
+  customerId     Int?
+  customer       Customer?     @relation(fields: [customerId], references: [id])
+  creditPaidAt   DateTime?
+  creditPaidAmount Decimal @default(0) @db.Decimal(12, 2)
+  cancelledAt    DateTime?
+}
+
+model Customer {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  createdAt DateTime @default(now())
+  sales     Sale[]
+  creditPayments CreditPayment[]
+}
+
+model CreditPayment {
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  customer   Customer @relation(fields: [customerId], references: [id])
+  amount     Decimal  @db.Decimal(12, 2)
+  createdAt  DateTime @default(now())
+
+  @@index([customerId, createdAt])
 }
 
 model SaleItem {

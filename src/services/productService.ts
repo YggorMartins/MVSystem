@@ -16,7 +16,7 @@ export async function createCategory(name: string, userId?: number) {
 }
 
 export async function createProduct(data: any, userId?: number) {
-  const exists = await ProductRepository.findByBarcode(data.barcode);
+  const exists = await ProductRepository.findAnyByBarcode(data.barcode);
   if (exists) throw new AppError(409, "O código de barras já está cadastrado");
 
   return prisma.$transaction(async (tx) => {
@@ -28,6 +28,51 @@ export async function createProduct(data: any, userId?: number) {
       tx,
     );
     return product;
+  });
+}
+
+export async function archiveProduct(productId: number, userId?: number) {
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  if (!product) throw new AppError(404, "Produto não encontrado");
+  if (product.archivedAt) throw new AppError(409, "Este produto já foi excluído");
+  return prisma.$transaction(async (tx) => {
+    const archived = await tx.product.update({
+      where: { id: productId },
+      data: { archivedAt: new Date() },
+    });
+    await AuditRepository.log(
+      userId,
+      "PRODUCT_ARCHIVE",
+      `Produto ${productId} (${product.name}) excluído do catálogo`,
+      tx,
+    );
+    return archived;
+  });
+}
+
+export async function updateProduct(productId: number, data: any, userId?: number) {
+  const current = await prisma.product.findUnique({ where: { id: productId } });
+  if (!current || current.archivedAt) throw new AppError(404, "Produto não encontrado");
+  const barcodeOwner = await ProductRepository.findAnyByBarcode(data.barcode);
+  if (barcodeOwner && barcodeOwner.id !== productId)
+    throw new AppError(409, "O código de barras já está cadastrado");
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.product.update({
+      where: { id: productId },
+      data: {
+        name: data.name,
+        barcode: data.barcode,
+        costPrice: data.costPrice,
+        price: data.price,
+        stockQuantity: data.stockQuantity,
+        unit: data.unit,
+        lowStockThreshold: data.lowStockThreshold,
+        categoryId: data.categoryId ?? null,
+      },
+      include: { category: true },
+    });
+    await AuditRepository.log(userId, "PRODUCT_UPDATE", `Produto ${productId} atualizado`, tx);
+    return updated;
   });
 }
 
@@ -43,11 +88,7 @@ export async function listProducts() {
   return ProductRepository.listAll();
 }
 
-export async function updateStockManual(
-  productId: number,
-  newQuantity: number,
-  userId?: number,
-) {
+export async function updateStockManual(productId: number, newQuantity: number, userId?: number) {
   const product = await ProductRepository.findById(productId);
   if (!product) throw new AppError(404, "Produto não encontrado");
 

@@ -9,9 +9,10 @@ export const validate = (schema: ZodSchema) => {
         error: "Dados da requisição inválidos",
         details: result.error.issues.map((issue) => ({
           field: issue.path.join(".") || "body",
-          message: issue.code === "unrecognized_keys"
-            ? `Campo(s) não permitido(s): ${issue.keys.join(", ")}`
-            : issue.message,
+          message:
+            issue.code === "unrecognized_keys"
+              ? `Campo(s) não permitido(s): ${issue.keys.join(", ")}`
+              : issue.message,
         })),
       });
     }

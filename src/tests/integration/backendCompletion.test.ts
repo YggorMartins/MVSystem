@@ -56,9 +56,7 @@ describe("Backend completion integration tests", () => {
 
     expect(categoriesRes.status).toBe(200);
     expect(Array.isArray(categoriesRes.body)).toBe(true);
-    expect(categoriesRes.body.some((cat: any) => cat.id === categoryId)).toBe(
-      true,
-    );
+    expect(categoriesRes.body.some((cat: any) => cat.id === categoryId)).toBe(true);
 
     const productRes = await request(app)
       .post("/api/products")
@@ -81,9 +79,7 @@ describe("Backend completion integration tests", () => {
 
     expect(productsRes.status).toBe(200);
     expect(Array.isArray(productsRes.body)).toBe(true);
-    expect(productsRes.body.some((prod: any) => prod.id === productId)).toBe(
-      true,
-    );
+    expect(productsRes.body.some((prod: any) => prod.id === productId)).toBe(true);
 
     const barcodeRes = await request(app)
       .get("/api/products/barcode/12345")
@@ -106,9 +102,7 @@ describe("Backend completion integration tests", () => {
 
     expect(registerListRes.status).toBe(200);
     expect(Array.isArray(registerListRes.body)).toBe(true);
-    expect(
-      registerListRes.body.some((reg: any) => reg.id === cashRegisterId),
-    ).toBe(true);
+    expect(registerListRes.body.some((reg: any) => reg.id === cashRegisterId)).toBe(true);
 
     const movementRes = await request(app)
       .post("/api/cash/movement")

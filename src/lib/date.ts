@@ -1,5 +1,4 @@
 export function getDayRange(baseDate = new Date()) {
-  
   const start = new Date(baseDate);
   start.setHours(0, 0, 0, 0);
 

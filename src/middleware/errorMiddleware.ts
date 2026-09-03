@@ -12,12 +12,7 @@ export class AppError extends Error {
   }
 }
 
-export function errorHandler(
-  err: Error,
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) {
+export function errorHandler(err: Error, req: Request, res: Response, next: NextFunction) {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({ error: err.message });
   }
