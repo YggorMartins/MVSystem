@@ -6,7 +6,6 @@ import { AppError } from "../middleware/errorMiddleware";
 type RegisterInput = {
   email: string;
   password: string;
-  role?: string;
 };
 
 type LoginInput = {
@@ -15,22 +14,15 @@ type LoginInput = {
 };
 
 export async function register(data: RegisterInput) {
-  const exists = await prisma.user.findUnique({
-    where: { email: data.email },
-  });
-
-  if (exists) {
-    throw new AppError(400, "Email already in use");
-  }
-
-  const passwordHash = await bcrypt.hash(data.password, 10);
+  const passwordHash = await bcrypt.hash(data.password, 12);
 
   return prisma.user.create({
     data: {
       email: data.email,
       passwordHash,
-      role: data.role ?? "user",
+      role: "caixa",
     },
+    select: { id: true, email: true, role: true, createdAt: true },
   });
 }
 
@@ -40,17 +32,20 @@ export async function login(data: LoginInput) {
   });
 
   if (!user) {
-    throw new AppError(401, "Invalid credentials");
+    await bcrypt.compare(
+      data.password,
+      "$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",
+    );
+    throw new AppError(401, "E-mail ou senha inválidos");
   }
 
   const valid = await bcrypt.compare(data.password, user.passwordHash);
 
   if (!valid) {
-    throw new AppError(401, "Invalid credentials");
+    throw new AppError(401, "E-mail ou senha inválidos");
   }
 
   return signToken({
     userId: user.id,
-    role: user.role,
   });
 }

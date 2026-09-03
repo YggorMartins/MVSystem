@@ -1,24 +1,34 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../lib/jwt";
 import { AppError } from "./errorMiddleware";
+import { prisma } from "../lib/prisma";
+import { UserRole } from "@prisma/client";
 
-export function auth(req: Request, res: Response, next: NextFunction) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) throw new AppError(401, "Token missing");
+export async function auth(req: Request, _res: Response, next: NextFunction) {
+  const match = req.headers.authorization?.match(/^Bearer ([^\s]+)$/i);
+  const token = match?.[1];
+  if (!token) throw new AppError(401, "Token de acesso não informado");
 
   try {
-    req.user = verifyToken(token);
+    const payload = verifyToken(token);
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true },
+    });
+    if (!user) throw new AppError(401, "Token de acesso inválido");
+    req.user = { userId: user.id, role: user.role };
     return next();
-  } catch {
-    throw new AppError(401, "Invalid token");
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError(401, "Token de acesso inválido ou expirado");
   }
 }
 
-export function allowRoles(...roles: string[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user) throw new AppError(401, "Unauthorized");
+export function allowRoles(...roles: UserRole[]) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user) throw new AppError(401, "Não autenticado");
     if (!roles.includes(req.user.role)) {
-      throw new AppError(403, "Access denied: insufficient privileges");
+      throw new AppError(403, "Você não tem permissão para esta operação");
     }
     next();
   };

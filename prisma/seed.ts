@@ -1,45 +1,31 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-
-declare const process: any;
+import { z } from "zod";
 
 const prisma = new PrismaClient();
+const input = z.object({
+  email: z.string().trim().toLowerCase().pipe(z.email()),
+  password: z.string().min(12).max(72),
+}).safeParse({ email: process.env.ADMIN_EMAIL, password: process.env.ADMIN_PASSWORD });
 
 async function main() {
-  const pwd = await bcrypt.hash("admin123", 10);
-
-  // Criar Usuário Admin Base
+  if (!input.success) {
+    throw new Error("Defina ADMIN_EMAIL válido e ADMIN_PASSWORD com 12 a 72 caracteres");
+  }
+  const passwordHash = await bcrypt.hash(input.data.password, 12);
   const admin = await prisma.user.upsert({
-    where: { email: "admin@mvsystem.com" },
-    update: {},
-    create: {
-      email: "admin@mvsystem.com",
-      passwordHash: pwd,
-      role: "admin",
-    },
+    where: { email: input.data.email },
+    update: { passwordHash, role: "admin" },
+    create: { email: input.data.email, passwordHash, role: "admin" },
+    select: { id: true, email: true },
   });
-
-  // Criar Caixa padrão
-  const register = await prisma.cashRegister.create({
-    data: {
-      openedAt: new Date(),
-      initialAmount: 200.0,
-      status: "open",
-    },
-  });
-
-  console.log({
-    seed: "Database seeded successfully",
-    adminId: admin.id,
-    activeCashRegisterId: register.id,
-  });
+  console.log(`Administrador configurado: ${admin.email} (id ${admin.id})`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : "Falha ao criar administrador");
+    process.exitCode = 1;
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(async () => prisma.$disconnect());

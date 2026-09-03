@@ -16,12 +16,21 @@ describe("Auth Integration Tests", () => {
     const res = await request(app).post("/api/auth/register").send({
       email: "test@mvsystem.com",
       password: "securepassword",
-      role: "caixa",
     });
 
     expect(res.status).toBe(201);
     expect(res.body).toHaveProperty("id");
     expect(res.body.email).toBe("test@mvsystem.com");
+    expect(res.body.role).toBe("caixa");
+  });
+
+  it("should reject role escalation during public registration", async () => {
+    const res = await request(app).post("/api/auth/register").send({
+      email: "attacker@mvsystem.com",
+      password: "securepassword",
+      role: "admin",
+    });
+    expect(res.status).toBe(400);
   });
 
   it("should fail authentication with wrong credentials", async () => {

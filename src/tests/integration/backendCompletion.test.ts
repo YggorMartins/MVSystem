@@ -11,10 +11,10 @@ describe("Backend completion integration tests", () => {
 
   beforeAll(async () => {
     await prisma.auditLog.deleteMany();
-    await prisma.cashMovement.deleteMany();
-    await prisma.cashRegister.deleteMany();
     await prisma.saleItem.deleteMany();
     await prisma.sale.deleteMany();
+    await prisma.cashMovement.deleteMany();
+    await prisma.cashRegister.deleteMany();
     await prisma.product.deleteMany();
     await prisma.category.deleteMany();
     await prisma.user.deleteMany();
@@ -22,7 +22,10 @@ describe("Backend completion integration tests", () => {
     await request(app).post("/api/auth/register").send({
       email: "admin@mvsystem.com",
       password: "securepassword",
-      role: "admin",
+    });
+    await prisma.user.update({
+      where: { email: "admin@mvsystem.com" },
+      data: { role: "admin" },
     });
 
     const loginRes = await request(app).post("/api/auth/login").send({
@@ -131,20 +134,37 @@ describe("Backend completion integration tests", () => {
       .post("/api/sales")
       .set("Authorization", `Bearer ${adminToken}`)
       .send({
-        totalAmount: 9.0,
-        paymentMethod: "cash",
+        idempotencyKey: "123e4567-e89b-42d3-a456-426614174000",
+        paymentMethod: "dinheiro",
         cashRegisterId,
         items: [
           {
             productId,
             quantity: 2,
-            unitPrice: 4.5,
           },
         ],
       });
 
     expect(saleRes.status).toBe(201);
     expect(saleRes.body).toHaveProperty("id");
+    expect(saleRes.body.totalAmount).toBe("9");
+
+    const retrySaleRes = await request(app)
+      .post("/api/sales")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        idempotencyKey: "123e4567-e89b-42d3-a456-426614174000",
+        paymentMethod: "dinheiro",
+        cashRegisterId,
+        items: [{ productId, quantity: 2 }],
+      });
+    expect(retrySaleRes.status).toBe(201);
+    expect(retrySaleRes.body.id).toBe(saleRes.body.id);
+
+    const productAfterSale = await prisma.product.findUniqueOrThrow({
+      where: { id: productId },
+    });
+    expect(productAfterSale.stockQuantity.toString()).toBe("8");
 
     const salesRes = await request(app)
       .get("/api/sales")

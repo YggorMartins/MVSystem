@@ -1,4 +1,7 @@
+import { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "../lib/prisma";
+
+type DbClient = PrismaClient | Prisma.TransactionClient;
 export const ProductRepository = {
   async create(data: {
     name: string;
@@ -6,8 +9,8 @@ export const ProductRepository = {
     price: number;
     stockQuantity: number;
     categoryId: number;
-  }) {
-    return prisma.product.create({ data, include: { category: true } });
+  }, db: DbClient = prisma) {
+    return db.product.create({ data, include: { category: true } });
   },
   async findByBarcode(barcode: string) {
     return prisma.product.findUnique({ where: { barcode } });
@@ -15,14 +18,17 @@ export const ProductRepository = {
   async findById(id: number) {
     return prisma.product.findUnique({ where: { id } });
   },
-  async updateStock(id: number, quantity: number, tx?: any) {
-    const client = tx || prisma;
-    return client.product.update({
+  async updateStock(id: number, quantity: number, db: DbClient = prisma) {
+    return db.product.update({
       where: { id },
       data: { stockQuantity: quantity },
     });
   },
   async listAll() {
-    return prisma.product.findMany({ include: { category: true } });
+    return prisma.product.findMany({
+      include: { category: true },
+      orderBy: { name: "asc" },
+      take: 500,
+    });
   },
 };

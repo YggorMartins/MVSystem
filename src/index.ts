@@ -6,35 +6,60 @@ import routes from "./routes";
 import { env } from "./lib/env";
 import { errorHandler } from "./middleware/errorMiddleware";
 import { logger } from "./lib/logger";
+import { prisma } from "./lib/prisma";
 
 const app = express();
 
 // Configurações de Segurança HTTP e Acesso
 app.use(helmet());
 app.use(
-  cors({ origin: env.nodeEnv === "production" ? "https://meusite.com" : "*" }),
+  cors({
+    origin(origin, callback) {
+      if (!origin || env.corsOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("Origem não permitida pelo CORS"));
+    },
+  }),
 );
 
 // Rate Limiting para evitar força bruta e DoS
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // limite de 100 requisições por IP
-  message: { error: "Too many requests from this IP, please try again later." },
+  limit: 100,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: { error: "Muitas requisições. Tente novamente mais tarde" },
 });
 app.use("/api", limiter);
 
-app.use(express.json());
+app.use(express.json({ limit: "32kb", strict: true }));
 app.use("/api", routes);
 
 // Tratamento de Erro Global (Sempre após as rotas)
+app.use((_req, res) => res.status(404).json({ error: "Rota não encontrada" }));
 app.use(errorHandler);
 
 if (env.nodeEnv !== "test") {
-  app.listen(env.port, () => {
+  const server = app.listen(env.port, () => {
     logger.info(
       `MVSystem API running securely on port ${env.port} [${env.nodeEnv}]`,
     );
   });
+
+  server.requestTimeout = 30_000;
+  server.headersTimeout = 15_000;
+  server.keepAliveTimeout = 5_000;
+
+  const shutdown = (signal: string) => {
+    logger.info(`${signal} recebido; encerrando servidor`);
+    server.close(async () => {
+      await prisma.$disconnect();
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
 }
 
 export { app };
