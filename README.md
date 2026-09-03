@@ -1,8 +1,8 @@
 # MVSystem
 
-Backend para gestão de pequenos comércios e operações de ponto de venda (PDV), desenvolvido com Node.js, TypeScript, Express, Prisma e PostgreSQL.
+Sistema completo para gestão de pequenos comércios e operações de ponto de venda (PDV), com frontend React e API Node.js, TypeScript, Express, Prisma e PostgreSQL.
 
-O sistema reúne autenticação e autorização, categorias, produtos, estoque fracionado, vendas transacionais, fluxo de caixa, relatórios gerenciais e auditoria de ações.
+O sistema reúne autenticação e autorização, catálogo e estoque analítico, vendas transacionais, fluxo de caixa, clientes e fiado, relatórios gerenciais e auditoria de ações.
 
 > O projeto está em desenvolvimento. Para produção, use HTTPS, segredos próprios, backups, monitoramento e um rate limiter compartilhado entre instâncias.
 
@@ -13,17 +13,24 @@ O sistema reúne autenticação e autorização, categorias, produtos, estoque f
 - Perfis `admin`, `gerente`, `caixa` e `estoque`.
 - Cadastro e listagem de categorias.
 - Cadastro, listagem e consulta de produtos por código de barras.
+- Edição completa e arquivamento seguro de produtos.
+- Preço de custo, preço de venda, unidade de medida e limite de estoque baixo.
 - Ajuste manual de estoque.
 - Estoque e vendas fracionadas com precisão de milésimos.
 - Valores monetários com precisão decimal de centavos.
 - Venda atômica com preços consultados no banco e total calculado no backend.
 - Idempotência de vendas contra duplicidade em reenvios.
+- Cancelamento administrativo com devolução automática dos itens ao estoque.
 - Abertura, movimentação, consulta e fechamento de caixa.
 - Apenas um caixa aberto por vez.
 - Bloqueio de vendas e movimentos em caixas fechados.
 - Validação de saldo antes de saídas do caixa.
 - Registro do valor contado no fechamento.
-- Relatório diário e dashboard gerencial.
+- Cadastro e busca de clientes para vendas no fiado.
+- Pagamentos parciais ou quitação total do saldo consolidado do cliente.
+- Relatório diário, dashboard gerencial e relatório analítico de estoque por categoria.
+- Impressão e exportação do relatório de estoque para PDF pelo navegador.
+- Interface responsiva com atalhos de teclado e identidade visual do Mercadinho da Vizinha.
 - Auditoria das principais ações administrativas e financeiras.
 - Testes unitários e de integração com Jest e Supertest.
 
@@ -33,7 +40,7 @@ O sistema reúne autenticação e autorização, categorias, produtos, estoque f
 - JWT limitado a `HS256`, com emissor, audiência e expiração.
 - Usuário e papel são confirmados no banco a cada requisição autenticada.
 - Senhas entre 12 e 72 caracteres, protegidas com bcrypt.
-- Rate limit global e limite mais restritivo para cadastro e login.
+- Rate limit específico para cadastro e login, sem limitar as rotas operacionais autenticadas.
 - CORS configurável por variável de ambiente.
 - Headers defensivos via Helmet.
 - Payload JSON limitado a 32 KB e schemas estritos com Zod.
@@ -43,7 +50,7 @@ O sistema reúne autenticação e autorização, categorias, produtos, estoque f
 - Credenciais de banco fora do arquivo Docker Compose.
 - Dependências verificadas com `npm audit`.
 
-O rate limiter atual utiliza memória local. Em uma implantação com múltiplas instâncias, configure um armazenamento compartilhado, como Redis. HTTPS deve ser terminado pela infraestrutura ou por um proxy reverso.
+O rate limiter de autenticação utiliza memória local. Em uma implantação com múltiplas instâncias, configure um armazenamento compartilhado, como Redis. HTTPS deve ser terminado pela infraestrutura ou por um proxy reverso.
 
 ## Tecnologias
 
@@ -59,12 +66,20 @@ O rate limiter atual utiliza memória local. Em uma implantação com múltiplas
 - Winston
 - Jest e Supertest
 - Docker Compose
+- React 19
+- Vite
+- React Router
+- Lucide React
+- Prettier
 
 ## Instalação
 
 ```bash
 git clone https://github.com/YggorMartins/MVSystem.git
 cd MVSystem
+npm install
+cp .env.example .env
+cd frontend
 npm install
 cp .env.example .env
 ```
@@ -117,6 +132,15 @@ npm start
 
 A API utiliza `http://localhost:4000` por padrão. As rotas de negócio ficam sob `/api`.
 
+Em outro terminal, execute o frontend:
+
+```bash
+cd frontend
+npm run dev
+```
+
+A interface abre em `http://localhost:3000`.
+
 ## Autenticação
 
 Envie o token nas rotas protegidas:
@@ -137,26 +161,34 @@ Cadastro público:
 
 ## Rotas
 
-| Método  | Rota                                | Perfis                  | Descrição                     |
-| ------- | ----------------------------------- | ----------------------- | ----------------------------- |
-| `POST`  | `/api/auth/register`                | Público                 | Cadastra usuário como `caixa` |
-| `POST`  | `/api/auth/login`                   | Público                 | Retorna um JWT                |
-| `POST`  | `/api/categories`                   | Admin, gerente          | Cadastra categoria            |
-| `GET`   | `/api/categories`                   | Admin, gerente          | Lista categorias              |
-| `POST`  | `/api/products`                     | Admin, gerente, estoque | Cadastra produto              |
-| `GET`   | `/api/products`                     | Todos autenticados      | Lista produtos                |
-| `GET`   | `/api/products/barcode/:barcode`    | Todos autenticados      | Busca por código de barras    |
-| `PATCH` | `/api/products/:id/stock`           | Admin, estoque          | Ajusta estoque                |
-| `POST`  | `/api/sales`                        | Admin, gerente, caixa   | Registra venda                |
-| `GET`   | `/api/sales`                        | Admin, gerente, caixa   | Lista vendas                  |
-| `POST`  | `/api/cash/open`                    | Admin, caixa            | Abre caixa                    |
-| `POST`  | `/api/cash/close/:id`               | Admin, caixa            | Fecha caixa                   |
-| `POST`  | `/api/cash/movement`                | Admin, caixa            | Registra entrada ou saída     |
-| `GET`   | `/api/cash/registers`               | Admin, caixa            | Lista caixas                  |
-| `GET`   | `/api/cash/registers/:id/movements` | Admin, caixa            | Lista movimentos              |
-| `GET`   | `/api/reports/daily`                | Admin, gerente, caixa   | Relatório diário              |
-| `GET`   | `/api/reports/dashboard`            | Admin, gerente, caixa   | Dashboard gerencial           |
-| `GET`   | `/api/audit/logs`                   | Admin, gerente          | Lista auditoria               |
+| Método   | Rota                                 | Perfis                  | Descrição                      |
+| -------- | ------------------------------------ | ----------------------- | ------------------------------ |
+| `POST`   | `/api/auth/register`                 | Público                 | Cadastra usuário como `caixa`  |
+| `POST`   | `/api/auth/login`                    | Público                 | Retorna um JWT                 |
+| `POST`   | `/api/categories`                    | Admin, gerente          | Cadastra categoria             |
+| `GET`    | `/api/categories`                    | Admin, gerente          | Lista categorias               |
+| `POST`   | `/api/products`                      | Admin, gerente, estoque | Cadastra produto               |
+| `GET`    | `/api/products`                      | Todos autenticados      | Lista produtos                 |
+| `GET`    | `/api/products/barcode/:barcode`     | Todos autenticados      | Busca por código de barras     |
+| `PATCH`  | `/api/products/:id`                  | Admin, gerente, estoque | Atualiza produto completo      |
+| `DELETE` | `/api/products/:id`                  | Admin                   | Arquiva produto                |
+| `PATCH`  | `/api/products/:id/stock`            | Admin, estoque          | Ajusta estoque                 |
+| `POST`   | `/api/sales`                         | Admin, gerente, caixa   | Registra venda                 |
+| `GET`    | `/api/sales`                         | Admin, gerente, caixa   | Lista vendas                   |
+| `DELETE` | `/api/sales/:id`                     | Admin                   | Cancela venda e repõe estoque  |
+| `GET`    | `/api/customers`                     | Admin, gerente, caixa   | Lista clientes                 |
+| `POST`   | `/api/customers`                     | Admin, gerente, caixa   | Cadastra cliente               |
+| `GET`    | `/api/credits`                       | Admin, gerente, caixa   | Lista vendas fiadas            |
+| `POST`   | `/api/customers/:id/credit-payments` | Admin, gerente, caixa   | Registra pagamento do fiado    |
+| `POST`   | `/api/cash/open`                     | Admin, caixa            | Abre caixa                     |
+| `POST`   | `/api/cash/close/:id`                | Admin, caixa            | Fecha caixa                    |
+| `POST`   | `/api/cash/movement`                 | Admin, caixa            | Registra entrada ou saída      |
+| `GET`    | `/api/cash/registers`                | Admin, caixa            | Lista caixas                   |
+| `GET`    | `/api/cash/registers/:id/movements`  | Admin, caixa            | Lista movimentos               |
+| `GET`    | `/api/reports/daily`                 | Admin, gerente, caixa   | Relatório diário               |
+| `GET`    | `/api/reports/dashboard`             | Admin, gerente, caixa   | Dashboard gerencial            |
+| `GET`    | `/api/reports/inventory`             | Admin, gerente, estoque | Relatório analítico de estoque |
+| `GET`    | `/api/audit/logs`                    | Admin, gerente          | Lista auditoria                |
 
 ## Exemplos
 
@@ -166,8 +198,11 @@ Cadastro público:
 {
   "name": "Queijo por quilo",
   "barcode": "789000000001",
+  "costPrice": 31.5,
   "price": 42.9,
   "stockQuantity": 15.75,
+  "unit": "KG",
+  "lowStockThreshold": 2.5,
   "categoryId": 1
 }
 ```
@@ -189,6 +224,8 @@ Cadastro público:
 ```
 
 Crie uma UUID para cada nova venda. Reutilize a chave somente ao repetir a mesma operação após timeout ou falha de rede. `unitPrice` e `totalAmount` não são recebidos do cliente.
+
+Para uma venda no fiado, envie também `customerId`. Os pagamentos posteriores são registrados no saldo consolidado do cliente e distribuídos automaticamente pelas dívidas mais antigas.
 
 Formas de pagamento:
 
@@ -245,6 +282,11 @@ prisma/
   migrations/         # Histórico do banco
   schema.prisma       # Modelo de dados
   seed.ts             # Criação segura do administrador
+frontend/
+  src/components/     # Layout, PDV, produtos e componentes reutilizáveis
+  src/contexts/       # Sessão e autenticação
+  src/pages/          # Dashboard, PDV, caixa, fiado, produtos e relatórios
+  src/lib/            # Cliente HTTP e formatação
 ```
 
 ## Qualidade
@@ -254,6 +296,7 @@ npm run build
 npm test
 npx prisma validate
 npm audit
+npm run format:check
 ```
 
 As migrations são testadas em PostgreSQL 16 durante a validação de integração.
