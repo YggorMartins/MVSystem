@@ -8,12 +8,14 @@ import { auth, allowRoles } from "./middleware/authMiddleware";
 import * as schemas from "./schemas/appSchemas";
 import * as cashSchemas from "./schemas/cashSchema";
 import { z } from "zod";
+import rateLimit from "express-rate-limit";
 
 const router = Router();
 
 // Auth (Público)
-router.post("/auth/register", validate(schemas.registerSchema), ctrl.register);
-router.post("/auth/login", validate(schemas.loginSchema), ctrl.login);
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10 });
+router.post("/auth/register", authLimiter, validate(schemas.registerSchema), ctrl.register);
+router.post("/auth/login", authLimiter, validate(schemas.loginSchema), ctrl.login);
 
 // Categorias (Apenas Admin e Gerente)
 router.post(
@@ -56,7 +58,11 @@ router.patch(
   "/products/:id/stock",
   auth,
   allowRoles("admin", "estoque"),
-  validate(z.object({ quantity: z.number().int().nonnegative() })),
+  validate(z.strictObject({
+    quantity: z.number("A quantidade deve ser um número")
+      .nonnegative("A quantidade não pode ser negativa")
+      .multipleOf(0.001, "A quantidade deve ter no máximo três casas decimais"),
+  })),
   ctrl.updateStock,
 );
 
@@ -88,6 +94,7 @@ router.post(
   "/cash/close/:id",
   auth,
   allowRoles("admin", "caixa"),
+  validate(cashSchemas.close),
   cashController.close,
 );
 

@@ -3,13 +3,21 @@ import { env } from "./env";
 
 export type JwtPayload = {
   userId: number;
-  role: string;
 };
 
 export function signToken(payload: JwtPayload) {
-  return jwt.sign(payload, env.jwtSecret, { expiresIn: "1h" });
+  return jwt.sign(payload, env.jwtSecret, {
+    algorithm: "HS256",
+    audience: "mvsystem-api",
+    issuer: "mvsystem",
+    expiresIn: "1h",
+  });
 }
 
 export function verifyToken(token: string) {
-  return jwt.verify(token, env.jwtSecret) as JwtPayload;
+  return jwt.verify(token, env.jwtSecret, {
+    algorithms: ["HS256"],
+    audience: "mvsystem-api",
+    issuer: "mvsystem",
+  }) as JwtPayload;
 }

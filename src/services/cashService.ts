@@ -1,11 +1,10 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { AppError } from "../middleware/errorMiddleware";
 import { AuditRepository } from "../repositories/auditRepository";
 
-type OpenCashInput = {
-  initialAmount: number;
-};
-
+type OpenCashInput = { initialAmount: number };
+type CloseCashInput = { closingAmount: number };
 type MovementInput = {
   cashRegisterId: number;
   type: "in" | "out";
@@ -14,120 +13,103 @@ type MovementInput = {
 };
 
 export async function open(data: OpenCashInput, userId?: number) {
-  const openRegister = await prisma.cashRegister.findFirst({
-    where: { status: "open" },
-  });
-
-  if (openRegister) {
-    throw new AppError(400, "There is already an open cash register");
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const register = await tx.cashRegister.create({
+        data: { openedAt: new Date(), initialAmount: data.initialAmount, status: "open" },
+      });
+      await AuditRepository.log(userId, "CASH_OPEN", `Caixa ${register.id} aberto`, tx);
+      return register;
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new AppError(409, "Já existe um caixa aberto");
+    }
+    throw error;
   }
-
-  const register = await prisma.cashRegister.create({
-    data: {
-      openedAt: new Date(),
-      initialAmount: data.initialAmount,
-      status: "open",
-    },
-  });
-
-  await AuditRepository.log(
-    userId,
-    "CASH_OPEN",
-    `Opened cash register ${register.id}`,
-  );
-
-  return register;
 }
 
-export async function close(id: number, userId?: number) {
-  const register = await prisma.cashRegister.findUnique({
-    where: { id },
-  });
+export async function close(id: number, data: CloseCashInput, userId?: number) {
+  return prisma.$transaction(async (tx) => {
+    const [register] = await tx.$queryRaw<Array<{ status: string }>>`
+      SELECT "status"::text AS "status" FROM "CashRegister" WHERE "id" = ${id} FOR UPDATE
+    `;
+    if (!register) throw new AppError(404, "Caixa não encontrado");
+    if (register.status !== "open") throw new AppError(409, "O caixa já está fechado");
 
-  if (!register) {
-    throw new AppError(404, "Cash register not found");
-  }
-
-  if (register.status === "closed") {
-    throw new AppError(400, "Cash register is already closed");
-  }
-
-  const updated = await prisma.cashRegister.update({
-    where: { id },
-    data: {
-      closedAt: new Date(),
-      status: "closed",
-    },
-  });
-
-  await AuditRepository.log(userId, "CASH_CLOSE", `Closed cash register ${id}`);
-
-  return updated;
+    const updated = await tx.cashRegister.update({
+      where: { id },
+      data: { closedAt: new Date(), closingAmount: data.closingAmount, status: "closed" },
+    });
+    await AuditRepository.log(
+      userId,
+      "CASH_CLOSE",
+      `Caixa ${id} fechado com valor contado ${updated.closingAmount?.toFixed(2)}`,
+      tx,
+    );
+    return updated;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
 export async function movement(data: MovementInput, userId?: number) {
-  const register = await prisma.cashRegister.findUnique({
-    where: { id: data.cashRegisterId },
-  });
+  return prisma.$transaction(async (tx) => {
+    const [register] = await tx.$queryRaw<Array<{ status: string; initialAmount: Prisma.Decimal }>>`
+      SELECT "status"::text AS "status", "initialAmount"
+      FROM "CashRegister" WHERE "id" = ${data.cashRegisterId} FOR UPDATE
+    `;
+    if (!register) throw new AppError(404, "Caixa não encontrado");
+    if (register.status !== "open") {
+      throw new AppError(409, "Não é possível movimentar um caixa fechado");
+    }
 
-  if (!register) {
-    throw new AppError(404, "Cash register not found");
-  }
+    const movements = await tx.cashMovement.findMany({
+      where: { cashRegisterId: data.cashRegisterId },
+      select: { type: true, amount: true },
+    });
+    const balance = movements.reduce(
+      (total, item) => item.type === "cash_in" ? total.add(item.amount) : total.sub(item.amount),
+      register.initialAmount,
+    );
+    const amount = new Prisma.Decimal(data.amount);
+    if (data.type === "out" && amount.greaterThan(balance)) {
+      throw new AppError(409, "Saldo insuficiente no caixa");
+    }
 
-  if (register.status === "closed") {
-    throw new AppError(400, "Cannot add movements to a closed cash register");
-  }
-
-  const movements = await prisma.cashMovement.findMany({
-    where: { cashRegisterId: data.cashRegisterId },
-  });
-
-  const balance = movements.reduce((total, movement) => {
-    return movement.type === "in"
-      ? total + movement.amount
-      : total - movement.amount;
-  }, register.initialAmount);
-
-  if (data.type === "out" && data.amount > balance) {
-    throw new AppError(400, "Insufficient funds in cash register");
-  }
-
-  const movement = await prisma.cashMovement.create({
-    data: {
-      cashRegisterId: data.cashRegisterId,
-      type: data.type,
-      amount: data.amount,
-      description: data.description,
-    },
-  });
-
-  await AuditRepository.log(
-    userId,
-    "CASH_MOVEMENT",
-    `Cash register ${data.cashRegisterId} movement ${data.type} ${data.amount}`,
-  );
-
-  return movement;
+    const movement = await tx.cashMovement.create({
+      data: {
+        cashRegisterId: data.cashRegisterId,
+        type: data.type === "in" ? "cash_in" : "cash_out",
+        amount,
+        description: data.description,
+      },
+    });
+    await AuditRepository.log(
+      userId,
+      "CASH_MOVEMENT",
+      `Movimento ${data.type} de ${amount.toFixed(2)} no caixa ${data.cashRegisterId}`,
+      tx,
+    );
+    return movement;
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-export async function listRegisters() {
+export function listRegisters() {
   return prisma.cashRegister.findMany({
     include: { movements: true },
     orderBy: { openedAt: "desc" },
+    take: 100,
   });
 }
 
 export async function listMovements(cashRegisterId: number) {
-  const register = await prisma.cashRegister.findUnique({
+  const exists = await prisma.cashRegister.findUnique({
     where: { id: cashRegisterId },
+    select: { id: true },
   });
-
-  if (!register) {
-    throw new AppError(404, "Cash register not found");
-  }
-
+  if (!exists) throw new AppError(404, "Caixa não encontrado");
   return prisma.cashMovement.findMany({
     where: { cashRegisterId },
     orderBy: { createdAt: "asc" },
+    take: 500,
   });
 }

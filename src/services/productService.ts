@@ -2,31 +2,33 @@ import { ProductRepository } from "../repositories/productRepository";
 import { CategoryRepository } from "../repositories/categoryRepository";
 import { AppError } from "../middleware/errorMiddleware";
 import { AuditRepository } from "../repositories/auditRepository";
+import { prisma } from "../lib/prisma";
 
 export async function createCategory(name: string, userId?: number) {
   const exists = await CategoryRepository.findByName(name);
-  if (exists) throw new AppError(400, "Category already exists");
+  if (exists) throw new AppError(409, "A categoria já existe");
 
-  const category = await CategoryRepository.create(name);
-  await AuditRepository.log(
-    userId,
-    "CATEGORY_CREATE",
-    `Created category ${name}`,
-  );
-  return category;
+  return prisma.$transaction(async (tx) => {
+    const category = await CategoryRepository.create(name, tx);
+    await AuditRepository.log(userId, "CATEGORY_CREATE", `Categoria ${name} criada`, tx);
+    return category;
+  });
 }
 
 export async function createProduct(data: any, userId?: number) {
   const exists = await ProductRepository.findByBarcode(data.barcode);
-  if (exists) throw new AppError(400, "Product barcode already registered");
+  if (exists) throw new AppError(409, "O código de barras já está cadastrado");
 
-  const product = await ProductRepository.create(data);
-  await AuditRepository.log(
-    userId,
-    "PRODUCT_CREATE",
-    `Created product ${data.name} - Barcode: ${data.barcode}`,
-  );
-  return product;
+  return prisma.$transaction(async (tx) => {
+    const product = await ProductRepository.create(data, tx);
+    await AuditRepository.log(
+      userId,
+      "PRODUCT_CREATE",
+      `Produto ${data.name} criado - código ${data.barcode}`,
+      tx,
+    );
+    return product;
+  });
 }
 
 export async function findByBarcode(barcode: string) {
@@ -47,13 +49,16 @@ export async function updateStockManual(
   userId?: number,
 ) {
   const product = await ProductRepository.findById(productId);
-  if (!product) throw new AppError(404, "Product not found");
+  if (!product) throw new AppError(404, "Produto não encontrado");
 
-  const updated = await ProductRepository.updateStock(productId, newQuantity);
-  await AuditRepository.log(
-    userId,
-    "STOCK_MANUAL_UPDATE",
-    `Updated ID ${productId} stock to ${newQuantity}`,
-  );
-  return updated;
+  return prisma.$transaction(async (tx) => {
+    const updated = await ProductRepository.updateStock(productId, newQuantity, tx);
+    await AuditRepository.log(
+      userId,
+      "STOCK_MANUAL_UPDATE",
+      `Estoque do produto ${productId} atualizado para ${newQuantity}`,
+      tx,
+    );
+    return updated;
+  });
 }

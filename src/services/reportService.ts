@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { getDayRange } from "../lib/date";
 
@@ -16,11 +17,17 @@ export async function daily() {
     },
   });
 
-  const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalSales = sales.reduce(
+    (sum, sale) => sum.add(sale.totalAmount),
+    new Prisma.Decimal(0),
+  );
   const totalItems = sales.reduce(
     (sum, sale) =>
-      sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
-    0,
+      sum.add(sale.items.reduce(
+        (itemSum, item) => itemSum.add(item.quantity),
+        new Prisma.Decimal(0),
+      )),
+    new Prisma.Decimal(0),
   );
 
   return {
@@ -56,18 +63,24 @@ export async function dashboard() {
     }),
   ]);
 
-  const totalSales = sales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalSales = sales.reduce(
+    (sum, sale) => sum.add(sale.totalAmount),
+    new Prisma.Decimal(0),
+  );
   const totalItems = sales.reduce(
     (sum, sale) =>
-      sum + sale.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
-    0,
+      sum.add(sale.items.reduce(
+        (itemSum, item) => itemSum.add(item.quantity),
+        new Prisma.Decimal(0),
+      )),
+    new Prisma.Decimal(0),
   );
 
   const cashRegisterSummaries = cashRegisters.map((register) => {
     const balance = register.movements.reduce((total, movement) => {
-      return movement.type === "in"
-        ? total + movement.amount
-        : total - movement.amount;
+      return movement.type === "cash_in"
+        ? total.add(movement.amount)
+        : total.sub(movement.amount);
     }, register.initialAmount);
 
     return {

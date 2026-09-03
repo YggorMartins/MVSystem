@@ -17,7 +17,6 @@ describe("Cash flow integration tests", () => {
     await request(app).post("/api/auth/register").send({
       email: "cashuser@mvsystem.com",
       password: "securepassword",
-      role: "caixa",
     });
 
     const loginRes = await request(app).post("/api/auth/login").send({
@@ -63,7 +62,7 @@ describe("Cash flow integration tests", () => {
       .set("Authorization", `Bearer ${token}`)
       .send({ initialAmount: 50 });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     expect(res.body).toHaveProperty("error");
   });
 
@@ -79,10 +78,13 @@ describe("Cash flow integration tests", () => {
   });
 
   it("should reject movement with invalid role", async () => {
-    const reg = await request(app).post("/api/auth/register").send({
+    await request(app).post("/api/auth/register").send({
       email: "user2@mvsystem.com",
       password: "securepassword",
-      role: "estoque",
+    });
+    await prisma.user.update({
+      where: { email: "user2@mvsystem.com" },
+      data: { role: "estoque" },
     });
 
     const loginRes = await request(app).post("/api/auth/login").send({
@@ -135,7 +137,7 @@ describe("Cash flow integration tests", () => {
         amount: 200,
       });
 
-    expect(outRes.status).toBe(400);
+    expect(outRes.status).toBe(409);
     expect(outRes.body).toHaveProperty("error");
   });
 
@@ -151,10 +153,11 @@ describe("Cash flow integration tests", () => {
     const res = await request(app)
       .post(`/api/cash/close/${registerId}`)
       .set("Authorization", `Bearer ${token}`)
-      .send();
+      .send({ closingAmount: 100 });
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("closed");
+    expect(res.body.closingAmount).toBe("100");
   });
 
   it("should reject movement after cash register is closed", async () => {
@@ -169,7 +172,7 @@ describe("Cash flow integration tests", () => {
     await request(app)
       .post(`/api/cash/close/${registerId}`)
       .set("Authorization", `Bearer ${token}`)
-      .send();
+      .send({ closingAmount: 100 });
 
     const res = await request(app)
       .post("/api/cash/movement")
@@ -180,7 +183,7 @@ describe("Cash flow integration tests", () => {
         amount: 20,
       });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(409);
     expect(res.body).toHaveProperty("error");
   });
 });

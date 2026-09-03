@@ -51,9 +51,13 @@ export const listProducts = productController.list;
 export const updateStock = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { quantity } = req.body;
+  const parsedId = typeof id === "string" ? Number(id) : Number.NaN;
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    return res.status(400).json({ error: "Identificador do produto inválido" });
+  }
   const product = await productService.updateStockManual(
-    Number(id),
-    Number(quantity),
+    parsedId,
+    quantity,
     req.user?.userId,
   );
   res.json(product);
