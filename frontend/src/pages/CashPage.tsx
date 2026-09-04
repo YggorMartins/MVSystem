@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CircleDollarSign, Clock3, LockKeyhole } from "lucide-react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  CircleDollarSign,
+  Clock3,
+  LockKeyhole,
+} from "lucide-react";
 import { api } from "../lib/api";
 import { dateTime, money } from "../lib/format";
 import type { CashRegister } from "../types";
@@ -13,8 +19,9 @@ function parseMoney(value: string) {
 export function CashPage() {
   const [registers, setRegisters] = useState<CashRegister[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<"open" | "close" | null>(null);
+  const [mode, setMode] = useState<"open" | "close" | "in" | "out" | null>(null);
   const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,8 +43,9 @@ export function CashPage() {
     load();
   }, []);
 
-  function showModal(nextMode: "open" | "close") {
+  function showModal(nextMode: "open" | "close" | "in" | "out") {
     setAmount("");
+    setDescription("");
     setError("");
     setMode(nextMode);
   }
@@ -58,10 +66,22 @@ export function CashPage() {
           method: "POST",
           body: JSON.stringify({ closingAmount: value }),
         });
+      if ((mode === "in" || mode === "out") && current)
+        await api("/cash/movement", {
+          method: "POST",
+          body: JSON.stringify({
+            cashRegisterId: current.id,
+            type: mode,
+            amount: value,
+            description: description.trim() || undefined,
+          }),
+        });
       setMessage(
         mode === "open"
           ? "Caixa aberto. Você já pode finalizar vendas."
-          : "Caixa fechado com sucesso.",
+          : mode === "close"
+            ? "Caixa fechado com sucesso."
+            : "Movimentação registrada com sucesso.",
       );
       setMode(null);
       await load();
@@ -81,9 +101,17 @@ export function CashPage() {
           <p>Abra, acompanhe e feche o caixa com segurança.</p>
         </div>
         {current ? (
-          <Button variant="secondary" icon={<LockKeyhole />} onClick={() => showModal("close")}>
-            Fechar caixa
-          </Button>
+          <div className="header-actions">
+            <Button variant="secondary" icon={<ArrowUpCircle />} onClick={() => showModal("in")}>
+              Suprimento
+            </Button>
+            <Button variant="danger" icon={<ArrowDownCircle />} onClick={() => showModal("out")}>
+              Sangria
+            </Button>
+            <Button variant="secondary" icon={<LockKeyhole />} onClick={() => showModal("close")}>
+              Fechar caixa
+            </Button>
+          </div>
         ) : (
           <Button icon={<CircleDollarSign />} onClick={() => showModal("open")}>
             Abrir caixa
@@ -106,8 +134,8 @@ export function CashPage() {
             </p>
           </div>
           <div>
-            <span>Saldo inicial</span>
-            <strong>{money(current.initialAmount)}</strong>
+            <span>Saldo esperado</span>
+            <strong>{money(current.expectedBalance ?? current.initialAmount)}</strong>
           </div>
         </section>
       ) : (
@@ -120,19 +148,57 @@ export function CashPage() {
           <Button onClick={() => showModal("open")}>Abrir caixa agora</Button>
         </section>
       )}
+      {!loading && registers.length > 0 && (
+        <section className="panel table-panel cash-history">
+          <div className="data-row cash-row data-head">
+            <span>Caixa</span>
+            <span>Período</span>
+            <span>Esperado</span>
+            <span>Contado</span>
+            <span>Diferença</span>
+          </div>
+          {registers.slice(0, 20).map((register) => (
+            <div className="data-row cash-row" key={register.id}>
+              <strong>
+                #{register.id}
+                <small>{register.status === "open" ? "Aberto" : "Fechado"}</small>
+              </strong>
+              <span>
+                {dateTime.format(new Date(register.openedAt))}
+                {register.closedAt ? ` — ${dateTime.format(new Date(register.closedAt))}` : ""}
+              </span>
+              <span>{money(register.expectedBalance ?? register.initialAmount)}</span>
+              <span>{register.closingAmount == null ? "—" : money(register.closingAmount)}</span>
+              <strong>{register.difference == null ? "—" : money(register.difference)}</strong>
+            </div>
+          ))}
+        </section>
+      )}
       <Modal
         open={mode !== null}
-        title={mode === "open" ? "Abrir caixa" : "Fechar caixa"}
+        title={
+          mode === "open"
+            ? "Abrir caixa"
+            : mode === "close"
+              ? "Fechar caixa"
+              : mode === "in"
+                ? "Registrar suprimento"
+                : "Registrar sangria"
+        }
         onClose={() => setMode(null)}
       >
         <form className="cash-form" onSubmit={submit}>
           <p>
             {mode === "open"
               ? "Conte o dinheiro disponível na gaveta para iniciar o expediente."
-              : "Conte todo o dinheiro disponível na gaveta antes de encerrar."}
+              : mode === "close"
+                ? `Conte a gaveta. O saldo esperado é ${money(current?.expectedBalance ?? 0)}.`
+                : mode === "in"
+                  ? "Informe o dinheiro acrescentado à gaveta."
+                  : "Informe o dinheiro retirado da gaveta."}
           </p>
           <label>
-            {mode === "open" ? "Saldo inicial" : "Valor contado"}
+            {mode === "open" ? "Saldo inicial" : mode === "close" ? "Valor contado" : "Valor"}
             <div className="money-field">
               <span>R$</span>
               <input
@@ -145,6 +211,19 @@ export function CashPage() {
               />
             </div>
           </label>
+          {(mode === "in" || mode === "out") && (
+            <label className="field">
+              Descrição
+              <input
+                maxLength={500}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={
+                  mode === "in" ? "Ex.: Reforço de troco" : "Ex.: Pagamento de fornecedor"
+                }
+              />
+            </label>
+          )}
           {error && <div className="form-error">{error}</div>}
           <footer className="modal-actions">
             <Button type="button" variant="ghost" onClick={() => setMode(null)}>
@@ -155,7 +234,9 @@ export function CashPage() {
                 ? "Confirmando..."
                 : mode === "open"
                   ? "Confirmar abertura"
-                  : "Confirmar fechamento"}
+                  : mode === "close"
+                    ? "Confirmar fechamento"
+                    : "Registrar movimentação"}
             </Button>
           </footer>
         </form>

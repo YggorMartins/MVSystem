@@ -7,19 +7,26 @@ import {
   Menu,
   ShoppingCart,
   UsersRound,
-  X,
+  UserCog,
+  ScrollText,
+  Truck,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import type { UserRole } from "../../types";
+import { canAccess } from "../../lib/presentation";
 
-const links = [
-  ["/", "Visão geral", LayoutDashboard],
-  ["/pdv", "Nova venda", ShoppingCart],
-  ["/produtos", "Produtos", Boxes],
-  ["/caixa", "Caixa", CircleDollarSign],
-  ["/fiado", "Fiado", UsersRound],
-  ["/relatorios", "Relatórios", BarChart3],
+const links: Array<readonly [string, string, typeof LayoutDashboard, readonly UserRole[]]> = [
+  ["/", "Visão geral", LayoutDashboard, ["admin", "gerente", "caixa"]],
+  ["/pdv", "Nova venda", ShoppingCart, ["admin", "gerente", "caixa"]],
+  ["/produtos", "Produtos", Boxes, ["admin", "gerente", "estoque"]],
+  ["/caixa", "Caixa", CircleDollarSign, ["admin", "caixa"]],
+  ["/fiado", "Fiado", UsersRound, ["admin", "gerente", "caixa"]],
+  ["/relatorios", "Relatórios", BarChart3, ["admin", "gerente", "caixa"]],
+  ["/auditoria", "Auditoria", ScrollText, ["admin", "gerente"]],
+  ["/usuarios", "Usuários", UserCog, ["admin"]],
+  ["/compras", "Compras", Truck, ["admin", "gerente", "estoque"]],
 ] as const;
 
 export function AppShell() {
@@ -37,17 +44,16 @@ export function AppShell() {
             <strong>MVSystem</strong>
             <span>Mercadinho da Vizinha</span>
           </div>
-          <button className="sidebar-close" onClick={() => setOpen(false)}>
-            <X />
-          </button>
         </div>
         <nav aria-label="Menu principal">
-          {links.map(([to, label, Icon]) => (
-            <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)}>
-              <Icon />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          {links
+            .filter(([, , , roles]) => session && canAccess(session.role, roles))
+            .map(([to, label, Icon]) => (
+              <NavLink key={to} to={to} end={to === "/"} onClick={() => setOpen(false)}>
+                <Icon />
+                <span>{label}</span>
+              </NavLink>
+            ))}
         </nav>
         <div className="operator">
           <div className="avatar">{session?.email[0].toUpperCase()}</div>

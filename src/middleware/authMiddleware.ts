@@ -13,9 +13,9 @@ export async function auth(req: Request, _res: Response, next: NextFunction) {
     const payload = verifyToken(token);
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, role: true },
+      select: { id: true, role: true, active: true },
     });
-    if (!user) throw new AppError(401, "Token de acesso inválido");
+    if (!user || !user.active) throw new AppError(401, "Usuário inativo ou token inválido");
     req.user = { userId: user.id, role: user.role };
     return next();
   } catch (error) {

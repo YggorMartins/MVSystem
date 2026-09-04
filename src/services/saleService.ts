@@ -18,7 +18,11 @@ export async function createSale(data: CreateSaleInput, userId?: number) {
         async (tx) => {
           const existingSale = await tx.sale.findUnique({
             where: { idempotencyKey: data.idempotencyKey },
-            include: { items: true },
+            include: {
+              items: { include: { product: true } },
+              customer: true,
+              fiscalDocument: true,
+            },
           });
           if (existingSale) return existingSale;
 
@@ -92,7 +96,11 @@ export async function createSale(data: CreateSaleInput, userId?: number) {
                 })),
               },
             },
-            include: { items: true },
+            include: {
+              items: { include: { product: true } },
+              customer: true,
+              fiscalDocument: true,
+            },
           });
 
           await AuditRepository.log(
@@ -127,10 +135,25 @@ export async function listSales() {
       items: { include: { product: true } },
       cashRegister: true,
       customer: true,
+      fiscalDocument: true,
     },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
+}
+
+export async function findSale(id: number) {
+  const sale = await prisma.sale.findUnique({
+    where: { id },
+    include: {
+      items: { include: { product: true } },
+      cashRegister: true,
+      customer: true,
+      fiscalDocument: true,
+    },
+  });
+  if (!sale) throw new AppError(404, "Venda não encontrada");
+  return sale;
 }
 
 export async function cancelSale(id: number, userId?: number) {
@@ -166,6 +189,10 @@ export async function cancelSale(id: number, userId?: number) {
         where: { id },
         data: { cancelledAt: new Date() },
         include: { items: true, customer: true },
+      });
+      await tx.fiscalDocument.updateMany({
+        where: { saleId: id },
+        data: { status: "cancelled", cancelledAt: new Date() },
       });
       await AuditRepository.log(
         userId,

@@ -10,7 +10,9 @@
     "test": "node node_modules/jest/bin/jest.js --config jest.config.cjs --runInBand",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prisma:seed": "node node_modules/ts-node/dist/bin.js prisma/seed.ts"
+    "prisma:seed": "node node_modules/ts-node/dist/bin.js prisma/seed.ts",
+    "backup": "sh scripts/backup.sh",
+    "restore": "sh scripts/restore.sh"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +27,7 @@
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
+    "prisma": "6.12.0",
     "winston": "^3.19.0",
     "zod": "^4.3.6"
   },
@@ -38,7 +41,6 @@
     "@types/supertest": "^7.2.0",
     "jest": "^30.4.2",
     "prettier": "^3.9.6",
-    "prisma": "6.12.0",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",

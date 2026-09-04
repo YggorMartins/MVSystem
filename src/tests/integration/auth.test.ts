@@ -1,45 +1,50 @@
-import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
+import { afterAll, beforeAll, describe, expect, it } from "@jest/globals";
+import bcrypt from "bcryptjs";
 import request from "supertest";
 import { app } from "../../index";
 import { prisma } from "../../lib/prisma";
 
 describe("Auth Integration Tests", () => {
   beforeAll(async () => {
+    await prisma.auditLog.deleteMany();
     await prisma.user.deleteMany();
-  });
-
-  afterAll(async () => {
-    await prisma.$disconnect();
-  });
-
-  it("should register a new system user correctly", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "test@mvsystem.com",
-      password: "securepassword",
+    await prisma.user.create({
+      data: {
+        email: "test@mvsystem.com",
+        passwordHash: await bcrypt.hash("securepassword", 4),
+        role: "caixa",
+      },
     });
-
-    expect(res.status).toBe(201);
-    expect(res.body).toHaveProperty("id");
-    expect(res.body.email).toBe("test@mvsystem.com");
-    expect(res.body.role).toBe("caixa");
   });
+  afterAll(async () => prisma.$disconnect());
 
-  it("should reject role escalation during public registration", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "attacker@mvsystem.com",
-      password: "securepassword",
-      role: "admin",
-    });
-    expect(res.status).toBe(400);
+  it("does not expose public registration", async () => {
+    expect(
+      (
+        await request(app)
+          .post("/api/auth/register")
+          .send({ email: "new@mvsystem.com", password: "securepassword" })
+      ).status,
+    ).toBe(404);
   });
-
-  it("should fail authentication with wrong credentials", async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "test@mvsystem.com",
-      password: "wrongpassword",
-    });
-
+  it("authenticates an active user", async () => {
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "test@mvsystem.com", password: "securepassword" });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty("token");
+  });
+  it("rejects wrong credentials", async () => {
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "test@mvsystem.com", password: "wrongpassword" });
     expect(res.status).toBe(401);
-    expect(res.body).toHaveProperty("error");
+  });
+  it("rejects blocked users", async () => {
+    await prisma.user.update({ where: { email: "test@mvsystem.com" }, data: { active: false } });
+    const res = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "test@mvsystem.com", password: "securepassword" });
+    expect(res.status).toBe(401);
   });
 });

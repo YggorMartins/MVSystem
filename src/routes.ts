@@ -6,18 +6,40 @@ import * as cashController from "./controllers/cashController";
 import * as customerController from "./controllers/customerController";
 import * as productController from "./controllers/productController";
 import * as reportController from "./controllers/reportController";
+import * as saleController from "./controllers/saleController";
+import * as userController from "./controllers/userController";
+import * as supplyController from "./controllers/supplyController";
+import * as fiscalController from "./controllers/fiscalController";
 import { allowRoles, auth } from "./middleware/authMiddleware";
 import { validate } from "./middleware/validationMiddleware";
 import * as schemas from "./schemas/appSchemas";
 import * as cashSchemas from "./schemas/cashSchema";
 import * as customerSchemas from "./schemas/customerSchema";
+import * as userSchemas from "./schemas/userSchema";
+import * as supplierSchemas from "./schemas/supplierSchema";
+import * as purchaseSchemas from "./schemas/purchaseSchema";
 
 const router = Router();
 
 // Auth (Público)
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10 });
-router.post("/auth/register", authLimiter, validate(schemas.registerSchema), ctrl.register);
 router.post("/auth/login", authLimiter, validate(schemas.loginSchema), ctrl.login);
+
+router.get("/users", auth, allowRoles("admin"), userController.list);
+router.post(
+  "/users",
+  auth,
+  allowRoles("admin"),
+  validate(userSchemas.createUser),
+  userController.create,
+);
+router.patch(
+  "/users/:id",
+  auth,
+  allowRoles("admin"),
+  validate(userSchemas.updateUser),
+  userController.update,
+);
 
 // Categorias (Apenas Admin e Gerente)
 router.post(
@@ -27,7 +49,7 @@ router.post(
   validate(schemas.categorySchema),
   ctrl.createCategory,
 );
-router.get("/categories", auth, allowRoles("admin", "gerente"), ctrl.listCategories);
+router.get("/categories", auth, allowRoles("admin", "gerente", "estoque"), ctrl.listCategories);
 
 router.get("/customers", auth, allowRoles("admin", "gerente", "caixa"), customerController.list);
 router.post(
@@ -100,7 +122,54 @@ router.post(
   ctrl.createSale,
 );
 router.get("/sales", auth, allowRoles("admin", "gerente", "caixa"), ctrl.listSales);
+router.get("/sales/:id", auth, allowRoles("admin", "gerente", "caixa"), saleController.find);
 router.delete("/sales/:id", auth, allowRoles("admin"), ctrl.cancelSale);
+router.post(
+  "/sales/:id/nfce/simulate",
+  auth,
+  allowRoles("admin", "gerente"),
+  fiscalController.simulate,
+);
+
+router.get(
+  "/suppliers",
+  auth,
+  allowRoles("admin", "gerente", "estoque"),
+  supplyController.listSuppliers,
+);
+router.post(
+  "/suppliers",
+  auth,
+  allowRoles("admin", "gerente", "estoque"),
+  validate(supplierSchemas.create),
+  supplyController.createSupplier,
+);
+router.patch(
+  "/suppliers/:id",
+  auth,
+  allowRoles("admin", "gerente", "estoque"),
+  validate(supplierSchemas.update),
+  supplyController.updateSupplier,
+);
+router.get(
+  "/purchases",
+  auth,
+  allowRoles("admin", "gerente", "estoque"),
+  supplyController.listPurchases,
+);
+router.post(
+  "/purchases",
+  auth,
+  allowRoles("admin", "gerente", "estoque"),
+  validate(purchaseSchemas.create),
+  supplyController.createPurchase,
+);
+router.delete(
+  "/purchases/:id",
+  auth,
+  allowRoles("admin", "gerente"),
+  supplyController.cancelPurchase,
+);
 
 // Fluxo de caixa (Admin e Caixa)
 router.post(

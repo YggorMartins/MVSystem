@@ -1,0 +1,9 @@
+services:
+  test-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mvsystem_test
+      POSTGRES_PASSWORD: mvsystem_test_local
+      POSTGRES_DB: mvsystem_test
+    ports: ["127.0.0.1:55433:5432"]
+    tmpfs: [/var/lib/postgresql/data]

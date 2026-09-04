@@ -26,4 +26,12 @@ export const env = {
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
+  fiscalMode: process.env.FISCAL_MODE ?? "disabled",
 };
+
+if (!["disabled", "simulation"].includes(env.fiscalMode)) {
+  throw new Error("FISCAL_MODE deve ser disabled ou simulation");
+}
+if (env.nodeEnv === "production" && env.fiscalMode === "simulation") {
+  throw new Error("A simulação NFC-e não pode ser habilitada em produção");
+}

@@ -102,11 +102,33 @@ export async function movement(data: MovementInput, userId?: number) {
   );
 }
 
-export function listRegisters() {
-  return prisma.cashRegister.findMany({
-    include: { movements: true },
+export async function listRegisters() {
+  const registers = await prisma.cashRegister.findMany({
+    include: {
+      movements: true,
+      sales: {
+        where: { paymentMethod: "dinheiro", cancelledAt: null },
+        select: { totalAmount: true },
+      },
+    },
     orderBy: { openedAt: "desc" },
     take: 100,
+  });
+  return registers.map((register) => {
+    const withMovements = register.movements.reduce(
+      (total, movement) =>
+        movement.type === "cash_in" ? total.add(movement.amount) : total.sub(movement.amount),
+      register.initialAmount,
+    );
+    const expectedBalance = register.sales.reduce(
+      (total, sale) => total.add(sale.totalAmount),
+      withMovements,
+    );
+    return {
+      ...register,
+      expectedBalance,
+      difference: register.closingAmount?.sub(expectedBalance) ?? null,
+    };
   });
 }
 

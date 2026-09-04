@@ -21,8 +21,126 @@ body {
   min-height: 100vh;
 }
 button,
-input {
+input,
+select {
   font: inherit;
+}
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.audit-row {
+  grid-template-columns: 130px minmax(170px, 1fr) 140px minmax(220px, 2fr);
+}
+.user-row {
+  grid-template-columns: minmax(220px, 2fr) 1fr 1fr minmax(180px, auto);
+}
+.cash-history {
+  margin-top: 16px;
+}
+.cash-row {
+  grid-template-columns: 90px minmax(230px, 2fr) 1fr 1fr 1fr;
+}
+.purchase-row {
+  grid-template-columns: 80px minmax(160px, 1.5fr) 110px 150px 100px 100px;
+}
+.purchase-form,
+.purchase-lines {
+  display: grid;
+  gap: 12px;
+}
+.purchase-form > .field {
+  display: inline-flex;
+  width: calc(50% - 8px);
+  margin-right: 8px;
+}
+.purchase-line {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) 90px 110px 44px;
+  gap: 8px;
+}
+.purchase-line select,
+.purchase-line input {
+  min-width: 0;
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 9px;
+}
+.thermal-receipt {
+  width: min(80mm, 100%);
+  margin: auto;
+  color: #111;
+  font-family: monospace;
+}
+.thermal-receipt header,
+.thermal-receipt footer {
+  display: grid;
+  text-align: center;
+  gap: 5px;
+  padding: 12px 0;
+  border-block: 1px dashed #555;
+}
+.thermal-receipt header strong {
+  font-size: 1.2rem;
+}
+.receipt-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #aaa;
+}
+.receipt-item small {
+  grid-column: 1;
+}
+.receipt-item strong {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.fiscal-simulation {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+.fiscal-simulation b {
+  border: 2px solid #111;
+  padding: 5px;
+}
+@media (max-width: 900px) {
+  .audit-row,
+  .user-row,
+  .cash-row,
+  .purchase-row {
+    min-width: 800px;
+  }
+  .table-panel {
+    overflow-x: auto;
+  }
+  .header-actions {
+    width: 100%;
+  }
+}
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #sale-receipt,
+  #sale-receipt * {
+    visibility: visible !important;
+  }
+  #sale-receipt {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 80mm;
+    padding: 3mm;
+  }
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
 }
 button,
 a {
@@ -149,9 +267,6 @@ strong {
   font-size: 0.71rem;
   margin-top: 2px;
 }
-.sidebar-close {
-  display: none;
-}
 .sidebar nav {
   display: grid;
   gap: 5px;
@@ -213,7 +328,6 @@ strong {
   text-transform: capitalize;
 }
 .operator button,
-.sidebar-close,
 .mobile-bar button {
   color: #9eb5ad;
   border: 0;
@@ -1598,10 +1712,6 @@ strong {
   }
   .sidebar--open {
     left: 0;
-  }
-  .sidebar-close {
-    display: grid;
-    margin-left: auto;
   }
   .sidebar-scrim {
     position: fixed;

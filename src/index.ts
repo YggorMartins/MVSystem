@@ -21,6 +21,14 @@ app.use(
 );
 
 app.use(express.json({ limit: "32kb", strict: true }));
+app.get("/health", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok" });
+  } catch {
+    res.status(503).json({ status: "unavailable" });
+  }
+});
 app.use("/api", routes);
 
 // Tratamento de Erro Global (Sempre após as rotas)

@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import request from "supertest";
 import { app } from "../../index";
 import { prisma } from "../../lib/prisma";
+import bcrypt from "bcryptjs";
 
 describe("Backend completion integration tests", () => {
   let adminToken: string;
@@ -10,6 +11,10 @@ describe("Backend completion integration tests", () => {
   let cashRegisterId: number;
 
   beforeAll(async () => {
+    await prisma.fiscalDocument.deleteMany();
+    await prisma.purchaseItem.deleteMany();
+    await prisma.purchase.deleteMany();
+    await prisma.supplier.deleteMany();
     await prisma.auditLog.deleteMany();
     await prisma.saleItem.deleteMany();
     await prisma.sale.deleteMany();
@@ -19,13 +24,12 @@ describe("Backend completion integration tests", () => {
     await prisma.category.deleteMany();
     await prisma.user.deleteMany();
 
-    await request(app).post("/api/auth/register").send({
-      email: "admin@mvsystem.com",
-      password: "securepassword",
-    });
-    await prisma.user.update({
-      where: { email: "admin@mvsystem.com" },
-      data: { role: "admin" },
+    await prisma.user.create({
+      data: {
+        email: "admin@mvsystem.com",
+        passwordHash: await bcrypt.hash("securepassword", 4),
+        role: "admin",
+      },
     });
 
     const loginRes = await request(app).post("/api/auth/login").send({
@@ -38,6 +42,28 @@ describe("Backend completion integration tests", () => {
 
   afterAll(async () => {
     await prisma.$disconnect();
+  });
+
+  it("should manage internal users and block their sessions", async () => {
+    const created = await request(app)
+      .post("/api/users")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ email: "employee@mvsystem.com", password: "securepassword", role: "caixa" });
+    expect(created.status).toBe(201);
+    const listed = await request(app)
+      .get("/api/users")
+      .set("Authorization", `Bearer ${adminToken}`);
+    expect(listed.body.some((user: any) => user.email === "employee@mvsystem.com")).toBe(true);
+    const blocked = await request(app)
+      .patch(`/api/users/${created.body.id}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ active: false });
+    expect(blocked.status).toBe(200);
+    expect(blocked.body.active).toBe(false);
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "employee@mvsystem.com", password: "securepassword" });
+    expect(login.status).toBe(401);
   });
 
   it("should manage categories, products, cash and reports", async () => {

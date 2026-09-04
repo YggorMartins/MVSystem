@@ -1,4 +1,27 @@
 export type UserRole = "admin" | "gerente" | "caixa" | "estoque";
+export interface User {
+  id: number;
+  email: string;
+  role: UserRole;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface AuditLog {
+  id: number;
+  action: string;
+  details: string;
+  createdAt: string;
+  user?: Pick<User, "id" | "email" | "role"> | null;
+}
+export interface CashMovement {
+  id: number;
+  cashRegisterId: number;
+  type: "cash_in" | "cash_out";
+  amount: string | number;
+  description?: string | null;
+  createdAt: string;
+}
 export type PaymentMethod = "dinheiro" | "cartao_credito" | "cartao_debito" | "pix" | "fiado";
 
 export interface Product {
@@ -60,6 +83,9 @@ export interface CashRegister {
   initialAmount: string | number;
   closingAmount?: string | number | null;
   status: "open" | "closed";
+  movements?: CashMovement[];
+  expectedBalance?: string | number;
+  difference?: string | number | null;
 }
 
 export interface Sale {
@@ -69,6 +95,7 @@ export interface Sale {
   createdAt: string;
   items?: Array<{
     id: number;
+    productId: number;
     quantity: string | number;
     unitPrice?: string | number;
     product?: Product;
@@ -78,6 +105,44 @@ export interface Sale {
   creditPaidAt?: string | null;
   creditPaidAmount?: string | number;
   cancelledAt?: string | null;
+  fiscalDocument?: FiscalDocument | null;
+}
+export interface FiscalDocument {
+  id: number;
+  saleId: number;
+  environment: "simulation" | "homologation" | "production";
+  status: "authorized_simulation" | "authorized" | "cancelled" | "rejected";
+  accessKey: string;
+  protocol: string;
+  issuedAt: string;
+  cancelledAt?: string | null;
+}
+export interface Supplier {
+  id: number;
+  name: string;
+  document?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface Purchase {
+  id: number;
+  idempotencyKey: string;
+  supplierId: number;
+  supplier: Supplier;
+  invoiceNumber?: string | null;
+  totalAmount: string | number;
+  receivedAt: string;
+  cancelledAt?: string | null;
+  items: Array<{
+    id: number;
+    productId: number;
+    product: Product;
+    quantity: string | number;
+    unitCost: string | number;
+  }>;
 }
 
 export interface Customer {

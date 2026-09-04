@@ -81,7 +81,13 @@ export async function dashboard() {
       orderBy: { createdAt: "desc" },
     }),
     prisma.cashRegister.findMany({
-      include: { movements: true },
+      include: {
+        movements: true,
+        sales: {
+          where: { paymentMethod: "dinheiro", cancelledAt: null },
+          select: { totalAmount: true },
+        },
+      },
       orderBy: { openedAt: "desc" },
     }),
     prisma.sale.findMany({
@@ -115,9 +121,13 @@ export async function dashboard() {
   );
 
   const cashRegisterSummaries = cashRegisters.map((register) => {
-    const balance = register.movements.reduce((total, movement) => {
+    const movementBalance = register.movements.reduce((total, movement) => {
       return movement.type === "cash_in" ? total.add(movement.amount) : total.sub(movement.amount);
     }, register.initialAmount);
+    const balance = register.sales.reduce(
+      (total, sale) => total.add(sale.totalAmount),
+      movementBalance,
+    );
 
     return {
       id: register.id,
@@ -125,6 +135,7 @@ export async function dashboard() {
       openedAt: register.openedAt,
       closedAt: register.closedAt,
       initialAmount: register.initialAmount,
+      closingAmount: register.closingAmount,
       balance,
     };
   });

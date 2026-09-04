@@ -31,7 +31,7 @@ export async function login(data: LoginInput) {
     where: { email: data.email },
   });
 
-  if (!user) {
+  if (!user || !user.active) {
     await bcrypt.compare(
       data.password,
       "$2b$12$R9h/cIPz0gi.URNNX3kh2OPST9/PgBkqquzi.Ss7KIUgO2t0jWMUW",

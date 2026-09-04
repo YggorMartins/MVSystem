@@ -2,11 +2,13 @@ import { describe, expect, it, beforeAll, afterAll } from "@jest/globals";
 import request from "supertest";
 import { app } from "../../index";
 import { prisma } from "../../lib/prisma";
+import bcrypt from "bcryptjs";
 
 describe("Cash flow integration tests", () => {
   let token: string;
 
   beforeAll(async () => {
+    await prisma.fiscalDocument.deleteMany();
     await prisma.saleItem.deleteMany();
     await prisma.sale.deleteMany();
     await prisma.cashMovement.deleteMany();
@@ -14,9 +16,12 @@ describe("Cash flow integration tests", () => {
     await prisma.auditLog.deleteMany();
     await prisma.user.deleteMany();
 
-    await request(app).post("/api/auth/register").send({
-      email: "cashuser@mvsystem.com",
-      password: "securepassword",
+    await prisma.user.create({
+      data: {
+        email: "cashuser@mvsystem.com",
+        passwordHash: await bcrypt.hash("securepassword", 4),
+        role: "caixa",
+      },
     });
 
     const loginRes = await request(app).post("/api/auth/login").send({
@@ -28,6 +33,7 @@ describe("Cash flow integration tests", () => {
   });
 
   beforeEach(async () => {
+    await prisma.fiscalDocument.deleteMany();
     await prisma.saleItem.deleteMany();
     await prisma.sale.deleteMany();
     await prisma.cashMovement.deleteMany();
@@ -78,13 +84,12 @@ describe("Cash flow integration tests", () => {
   });
 
   it("should reject movement with invalid role", async () => {
-    await request(app).post("/api/auth/register").send({
-      email: "user2@mvsystem.com",
-      password: "securepassword",
-    });
-    await prisma.user.update({
-      where: { email: "user2@mvsystem.com" },
-      data: { role: "estoque" },
+    await prisma.user.create({
+      data: {
+        email: "user2@mvsystem.com",
+        passwordHash: await bcrypt.hash("securepassword", 4),
+        role: "estoque",
+      },
     });
 
     const loginRes = await request(app).post("/api/auth/login").send({

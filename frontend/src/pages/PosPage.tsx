@@ -2,13 +2,22 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CircleCheck, RotateCcw, ShoppingBag } from "lucide-react";
 import { api } from "../lib/api";
 import { money } from "../lib/format";
-import type { CartItem, CashRegister, PaymentMethod, Product } from "../types";
+import type {
+  CartItem,
+  CashRegister,
+  FiscalDocument,
+  PaymentMethod,
+  Product,
+  Sale,
+} from "../types";
 import { ProductSearch } from "../components/pos/ProductSearch";
 import { CartTable } from "../components/pos/CartTable";
 import { PaymentModal } from "../components/pos/PaymentModal";
 import { Button } from "../components/ui/Button";
 import { useAuth } from "../contexts/AuthContext";
 import { useSearchParams } from "react-router-dom";
+import { ReceiptModal } from "../components/pos/ReceiptModal";
+import { createBarcodeAccumulator } from "../lib/barcode";
 
 export function PosPage() {
   const { session } = useAuth();
@@ -23,6 +32,7 @@ export function PosPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [paymentError, setPaymentError] = useState("");
+  const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     api<Product[]>("/products")
@@ -54,6 +64,24 @@ export function PosPage() {
     else setMessage("Produto não encontrado.");
   };
   useEffect(() => {
+    const read = createBarcodeAccumulator((barcode) => {
+      const product = products.find((item) => item.barcode === barcode);
+      if (product) add(product);
+      else setMessage(`Código ${barcode} não encontrado.`);
+    });
+    const listener = (event: KeyboardEvent) => {
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement
+      )
+        return;
+      read(event.key);
+    };
+    window.addEventListener("keydown", listener, true);
+    return () => window.removeEventListener("keydown", listener, true);
+  }, [products, add]);
+  useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.key === "F2") {
         e.preventDefault();
@@ -82,7 +110,7 @@ export function PosPage() {
       const register = registers.find((r) => r.status === "open");
       if (!register)
         throw new Error("O caixa está fechado. Abra o caixa antes de finalizar a venda.");
-      await api("/sales", {
+      const sale = await api<Sale>("/sales", {
         method: "POST",
         body: JSON.stringify({
           idempotencyKey: crypto.randomUUID(),
@@ -94,6 +122,7 @@ export function PosPage() {
       });
       setCart([]);
       setPayment(false);
+      setCompletedSale(sale);
       setMessage("Venda finalizada com sucesso!");
     } catch (e) {
       setPaymentError(e instanceof Error ? e.message : "Erro ao finalizar a venda.");
@@ -198,6 +227,23 @@ export function PosPage() {
         initialCustomerId={presetCustomerId}
         onClose={() => setPayment(false)}
         onConfirm={finish}
+      />
+      <ReceiptModal
+        sale={completedSale}
+        canFiscal={session?.role === "admin" || session?.role === "gerente"}
+        onClose={() => setCompletedSale(null)}
+        onFiscal={async () => {
+          if (!completedSale) return;
+          try {
+            const fiscalDocument = await api<FiscalDocument>(
+              `/sales/${completedSale.id}/nfce/simulate`,
+              { method: "POST" },
+            );
+            setCompletedSale({ ...completedSale, fiscalDocument });
+          } catch (e) {
+            setMessage(e instanceof Error ? e.message : "Não foi possível simular a NFC-e.");
+          }
+        }}
       />
     </div>
   );

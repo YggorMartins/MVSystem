@@ -8,7 +8,7 @@ O sistema reúne autenticação e autorização, catálogo e estoque analítico,
 
 ## Funcionalidades
 
-- Cadastro público seguro com perfil padrão `caixa`.
+- Gestão administrativa de usuários, perfis, senhas e bloqueio de acesso.
 - Login JWT e controle de acesso por perfis.
 - Perfis `admin`, `gerente`, `caixa` e `estoque`.
 - Cadastro e listagem de categorias.
@@ -32,11 +32,15 @@ O sistema reúne autenticação e autorização, catálogo e estoque analítico,
 - Impressão e exportação do relatório de estoque para PDF pelo navegador.
 - Interface responsiva com atalhos de teclado e identidade visual do Mercadinho da Vizinha.
 - Auditoria das principais ações administrativas e financeiras.
+- Fornecedores e compras com entrada transacional e estorno seguro de estoque.
+- Comprovante não fiscal otimizado para impressora térmica de 80 mm.
+- Leitura de código de barras por campo focado ou captura rápida do scanner.
+- NFC-e em simulador explicitamente sem validade fiscal e bloqueado em produção.
 - Testes unitários e de integração com Jest e Supertest.
 
 ## Segurança e integridade
 
-- O cadastro público não aceita `role`; novos usuários recebem o perfil `caixa`.
+- Não há cadastro público; somente administradores criam e gerenciam funcionários.
 - JWT limitado a `HS256`, com emissor, audiência e expiração.
 - Usuário e papel são confirmados no banco a cada requisição autenticada.
 - Senhas entre 12 e 72 caracteres, protegidas com bcrypt.
@@ -141,6 +145,12 @@ npm run dev
 
 A interface abre em `http://localhost:3000`.
 
+## Produção, backup e homologação
+
+- Consulte [docs/OPERACAO.md](docs/OPERACAO.md) para implantação com containers, HTTPS, health check, backup e restauração.
+- Execute e registre [docs/HOMOLOGACAO.md](docs/HOMOLOGACAO.md) antes de liberar a versão no comércio.
+- Os testes exigem `NODE_ENV=test` e um banco isolado cujo nome contenha `_test`.
+
 ## Autenticação
 
 Envie o token nas rotas protegidas:
@@ -150,45 +160,47 @@ Authorization: Bearer SEU_TOKEN
 Content-Type: application/json
 ```
 
-Cadastro público:
-
-```json
-{
-  "email": "usuario@example.com",
-  "password": "uma-senha-com-12-caracteres"
-}
-```
+Funcionários são cadastrados no módulo **Usuários**, disponível apenas para administradores.
 
 ## Rotas
 
-| Método   | Rota                                 | Perfis                  | Descrição                      |
-| -------- | ------------------------------------ | ----------------------- | ------------------------------ |
-| `POST`   | `/api/auth/register`                 | Público                 | Cadastra usuário como `caixa`  |
-| `POST`   | `/api/auth/login`                    | Público                 | Retorna um JWT                 |
-| `POST`   | `/api/categories`                    | Admin, gerente          | Cadastra categoria             |
-| `GET`    | `/api/categories`                    | Admin, gerente          | Lista categorias               |
-| `POST`   | `/api/products`                      | Admin, gerente, estoque | Cadastra produto               |
-| `GET`    | `/api/products`                      | Todos autenticados      | Lista produtos                 |
-| `GET`    | `/api/products/barcode/:barcode`     | Todos autenticados      | Busca por código de barras     |
-| `PATCH`  | `/api/products/:id`                  | Admin, gerente, estoque | Atualiza produto completo      |
-| `DELETE` | `/api/products/:id`                  | Admin                   | Arquiva produto                |
-| `PATCH`  | `/api/products/:id/stock`            | Admin, estoque          | Ajusta estoque                 |
-| `POST`   | `/api/sales`                         | Admin, gerente, caixa   | Registra venda                 |
-| `GET`    | `/api/sales`                         | Admin, gerente, caixa   | Lista vendas                   |
-| `DELETE` | `/api/sales/:id`                     | Admin                   | Cancela venda e repõe estoque  |
-| `GET`    | `/api/customers`                     | Admin, gerente, caixa   | Lista clientes                 |
-| `POST`   | `/api/customers`                     | Admin, gerente, caixa   | Cadastra cliente               |
-| `GET`    | `/api/credits`                       | Admin, gerente, caixa   | Lista vendas fiadas            |
-| `POST`   | `/api/customers/:id/credit-payments` | Admin, gerente, caixa   | Registra pagamento do fiado    |
-| `POST`   | `/api/cash/open`                     | Admin, caixa            | Abre caixa                     |
-| `POST`   | `/api/cash/close/:id`                | Admin, caixa            | Fecha caixa                    |
-| `POST`   | `/api/cash/movement`                 | Admin, caixa            | Registra entrada ou saída      |
-| `GET`    | `/api/cash/registers`                | Admin, caixa            | Lista caixas                   |
-| `GET`    | `/api/cash/registers/:id/movements`  | Admin, caixa            | Lista movimentos               |
-| `GET`    | `/api/reports/daily`                 | Admin, gerente, caixa   | Relatório diário               |
-| `GET`    | `/api/reports/dashboard`             | Admin, gerente, caixa   | Dashboard gerencial            |
-| `GET`    | `/api/reports/inventory`             | Admin, gerente, estoque | Relatório analítico de estoque |
-| `GET`    | `/api/audit/logs`                    | Admin, gerente          | Lista auditoria                |
+| Método   | Rota                                 | Perfis                  | Descrição                        |
+| -------- | ------------------------------------ | ----------------------- | -------------------------------- |
+| `POST`   | `/api/auth/login`                    | Público                 | Retorna um JWT                   |
+| `GET`    | `/api/users`                         | Admin                   | Lista funcionários               |
+| `POST`   | `/api/users`                         | Admin                   | Cadastra funcionário             |
+| `PATCH`  | `/api/users/:id`                     | Admin                   | Edita ou bloqueia funcionário    |
+| `POST`   | `/api/categories`                    | Admin, gerente          | Cadastra categoria               |
+| `GET`    | `/api/categories`                    | Admin, gerente          | Lista categorias                 |
+| `POST`   | `/api/products`                      | Admin, gerente, estoque | Cadastra produto                 |
+| `GET`    | `/api/products`                      | Todos autenticados      | Lista produtos                   |
+| `GET`    | `/api/products/barcode/:barcode`     | Todos autenticados      | Busca por código de barras       |
+| `PATCH`  | `/api/products/:id`                  | Admin, gerente, estoque | Atualiza produto completo        |
+| `DELETE` | `/api/products/:id`                  | Admin                   | Arquiva produto                  |
+| `PATCH`  | `/api/products/:id/stock`            | Admin, estoque          | Ajusta estoque                   |
+| `POST`   | `/api/sales`                         | Admin, gerente, caixa   | Registra venda                   |
+| `GET`    | `/api/sales`                         | Admin, gerente, caixa   | Lista vendas                     |
+| `DELETE` | `/api/sales/:id`                     | Admin                   | Cancela venda e repõe estoque    |
+| `GET`    | `/api/customers`                     | Admin, gerente, caixa   | Lista clientes                   |
+| `POST`   | `/api/customers`                     | Admin, gerente, caixa   | Cadastra cliente                 |
+| `GET`    | `/api/credits`                       | Admin, gerente, caixa   | Lista vendas fiadas              |
+| `POST`   | `/api/customers/:id/credit-payments` | Admin, gerente, caixa   | Registra pagamento do fiado      |
+| `POST`   | `/api/cash/open`                     | Admin, caixa            | Abre caixa                       |
+| `POST`   | `/api/cash/close/:id`                | Admin, caixa            | Fecha caixa                      |
+| `POST`   | `/api/cash/movement`                 | Admin, caixa            | Registra entrada ou saída        |
+| `GET`    | `/api/cash/registers`                | Admin, caixa            | Lista caixas                     |
+| `GET`    | `/api/cash/registers/:id/movements`  | Admin, caixa            | Lista movimentos                 |
+| `GET`    | `/api/reports/daily`                 | Admin, gerente, caixa   | Relatório diário                 |
+| `GET`    | `/api/reports/dashboard`             | Admin, gerente, caixa   | Dashboard gerencial              |
+| `GET`    | `/api/reports/inventory`             | Admin, gerente, estoque | Relatório analítico de estoque   |
+| `GET`    | `/api/audit/logs`                    | Admin, gerente          | Lista auditoria                  |
+| `GET`    | `/api/suppliers`                     | Admin, gerente, estoque | Lista fornecedores               |
+| `POST`   | `/api/suppliers`                     | Admin, gerente, estoque | Cadastra fornecedor              |
+| `PATCH`  | `/api/suppliers/:id`                 | Admin, gerente, estoque | Atualiza fornecedor              |
+| `GET`    | `/api/purchases`                     | Admin, gerente, estoque | Lista compras                    |
+| `POST`   | `/api/purchases`                     | Admin, gerente, estoque | Recebe compra e atualiza estoque |
+| `DELETE` | `/api/purchases/:id`                 | Admin, gerente          | Estorna compra com proteção      |
+| `POST`   | `/api/sales/:id/nfce/simulate`       | Admin, gerente          | Gera NFC-e simulada              |
 
 ## Exemplos
 
@@ -293,13 +305,13 @@ frontend/
 
 ```bash
 npm run build
-npm test
 npx prisma validate
 npm audit
 npm run format:check
+cd frontend && npm run build && npm test
 ```
 
-As migrations são testadas em PostgreSQL 16 durante a validação de integração.
+Para a suíte de integração, suba `compose.test.yaml`, aplique as migrations e execute `npm test` com `NODE_ENV=test`, um `JWT_SECRET` de testes e uma `DATABASE_URL` cujo banco contenha `_test`. Veja o procedimento completo em [docs/OPERACAO.md](docs/OPERACAO.md). Essa proteção impede que a suíte apague dados de desenvolvimento ou produção.
 
 ## Licença
 
